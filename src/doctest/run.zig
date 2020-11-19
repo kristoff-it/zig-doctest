@@ -8,8 +8,7 @@ const process = std.process;
 const render_utils = @import("render_utils.zig");
 
 pub const RunCommand = struct {
-    expected_outcome: enum { Success, Failure } = .Success,
-    check_output: ?[]const u8 = null, // TODO: should we differentiate between out and err?
+    expected_outcome: union(enum) { Success, Failure: []const u8 } = .Success,
     max_doc_file_size: usize = 1024 * 1024 * 1, // 1MB TODO: change?
     // TODO: arguments?
 };
@@ -46,7 +45,7 @@ pub fn runExe(
         }
         break :ko result;
     } else ok: {
-        break :ok try exec(allocator, env_map, cmd.max_doc_file_size, run_args);
+        break :ok try render_utils.exec(allocator, env_map, cmd.max_doc_file_size, run_args);
     };
 
     const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);
@@ -60,28 +59,4 @@ pub fn runExe(
         try out.print("(process terminated by signal)", .{});
     }
     try out.print("</code></pre>\n", .{});
-}
-
-fn exec(allocator: *mem.Allocator, env_map: *std.BufMap, max_size: usize, args: []const []const u8) !ChildProcess.ExecResult {
-    const result = try ChildProcess.exec(.{
-        .allocator = allocator,
-        .argv = args,
-        .env_map = env_map,
-        .max_output_bytes = max_size,
-    });
-    switch (result.term) {
-        .Exited => |exit_code| {
-            if (exit_code != 0) {
-                print("{}\nThe following command exited with code {}:\n", .{ result.stderr, exit_code });
-                render_utils.dumpArgs(args);
-                return error.ChildExitError;
-            }
-        },
-        else => {
-            print("{}\nThe following command crashed:\n", .{result.stderr});
-            render_utils.dumpArgs(args);
-            return error.ChildCrashed;
-        },
-    }
-    return result;
 }

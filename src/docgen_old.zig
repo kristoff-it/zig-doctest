@@ -579,7 +579,7 @@ fn genHtml(allocator: *mem.Allocator, tokenizer: *Tokenizer, toc: *Toc, out: any
                         var build_args = std.ArrayList([]const u8).init(allocator);
                         defer build_args.deinit();
 
-                        const name_plus_h_ext = try std.fmt.allocPrint(allocator, "{}.h", .{code.name});
+                        const    = try std.fmt.allocPrint(allocator, "{}.h", .{code.name});
                         const output_h_file_name = try fs.path.join(
                             allocator,
                             &[_][]const u8{ tmp_dir_name, name_plus_h_ext },

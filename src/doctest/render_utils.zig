@@ -1,6 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
+const ChildProcess = std.ChildProcess;
 
 pub fn dumpArgs(args: []const []const u8) void {
     for (args) |arg|
@@ -132,4 +133,33 @@ pub fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {
         }
     }
     return buf.toOwnedSlice();
+}
+
+pub fn exec(
+    allocator: *mem.Allocator,
+    env_map: *std.BufMap,
+    max_size: usize,
+    args: []const []const u8,
+) !ChildProcess.ExecResult {
+    const result = try ChildProcess.exec(.{
+        .allocator = allocator,
+        .argv = args,
+        .env_map = env_map,
+        .max_output_bytes = max_size,
+    });
+    switch (result.term) {
+        .Exited => |exit_code| {
+            if (exit_code != 0) {
+                print("{}\nThe following command exited with code {}:\n", .{ result.stderr, exit_code });
+                dumpArgs(args);
+                return error.ChildExitError;
+            }
+        },
+        else => {
+            print("{}\nThe following command crashed:\n", .{result.stderr});
+            dumpArgs(args);
+            return error.ChildCrashed;
+        },
+    }
+    return result;
 }

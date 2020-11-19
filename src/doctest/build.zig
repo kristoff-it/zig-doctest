@@ -8,30 +8,23 @@ const process = std.process;
 
 const render_utils = @import("render_utils.zig");
 
-const workaround = [1][]const u8{"bug"};
-
 /// This struct bundles all the options necessary to run a snippet of code.
 /// `id` is used to differentiate between the different commands (e.g. build-exe, test).
 pub const BuildCommand = struct {
-    id: Id,
+    format: Format,
     name: []const u8 = "code",
     is_inline: bool = false,
     mode: builtin.Mode = .Debug,
-    link_objects: []const []const u8 = workaround[0..0],
+    link_objects: []const []const u8 = &[0][]u8{},
     target_str: ?[]const u8 = null,
     link_libc: bool = false,
     disable_cache: bool = false, // TODO make sure it's used somewhere
     tmp_dir_name: []const u8, // TODO, maybe this should be automated at a different level?
-    expected_outcome: enum { SilentSuccess, Success, Failure } = .Success,
-    check_output: ?[]const u8 = null, // TODO: should we differentiate between out and err?
+    expected_outcome: union(enum) { SilentSuccess, Success, Failure: []const u8 } = .Success,
     max_doc_file_size: usize = 1024 * 1024 * 1, // 1MB TODO: change?
 
     pub const obj_ext = (std.zig.CrossTarget{}).oFileExt();
-    pub const Id = enum {
-        Exe,
-        Obj,
-        Lib,
-    };
+    pub const Format = enum { exe, obj, lib };
 };
 
 fn dumpArgs(args: []const []const u8) void {
@@ -41,7 +34,7 @@ fn dumpArgs(args: []const []const u8) void {
         print("\n", .{});
 }
 
-pub fn buildExe(
+pub fn runBuild(
     allocator: *mem.Allocator,
     input_bytes: []const u8,
     out: anytype,
@@ -49,6 +42,11 @@ pub fn buildExe(
     zig_exe: []const u8,
     cmd: BuildCommand,
 ) !?[]const u8 {
+    const zig_command = switch (cmd.format) {
+        .exe => "build-exe",
+        .obj => "build-obj",
+        .lib => "build-lib",
+    };
 
     // Save the code as a temp .zig file and start preparing
     // the argument list for the Zig compiler.
@@ -64,7 +62,7 @@ pub fn buildExe(
         try fs.cwd().writeFile(tmp_source_file_name, input_bytes);
 
         try build_args.appendSlice(&[_][]const u8{
-            zig_exe,          "build-exe",
+            zig_exe,          zig_command,
             "--name",         cmd.name,
             "--color",        "on",
             "--enable-cache", tmp_source_file_name,
@@ -72,7 +70,7 @@ pub fn buildExe(
     }
 
     // Invocation line (continues into the following blocks)
-    try out.print("<pre><code class=\"shell\">$ zig build-exe {}.zig", .{cmd.name});
+    try out.print("<pre><code class=\"shell\">$ zig {} {}.zig", .{ zig_command, cmd.name });
 
     // Add release switches
     switch (cmd.mode) {
@@ -105,6 +103,7 @@ pub fn buildExe(
     const target = try std.zig.CrossTarget.parse(.{
         .arch_os_abi = cmd.target_str orelse "native",
     });
+
     // TODO: is_inline is a switch that prevents the target option from being
     // shown in the output. It seems a stylistical thing, do we keep it?
     if (cmd.target_str) |triple| {
@@ -113,6 +112,24 @@ pub fn buildExe(
             try out.print(" -target {}", .{triple});
         }
     }
+
+    // Create a path for the resulting executable
+    const ext = switch (cmd.format) {
+        .exe => target.exeFileExt(),
+        .obj => target.dynamicLibSuffix(),
+        .lib => target.staticLibSuffix(), // TODO: I don't even know how this stupid naming scheme works, please somebody make this correct for me.
+    };
+    const name_with_ext = try std.fmt.allocPrint(allocator, "{}{}", .{ cmd.name, ext });
+    const path_to_exe = try fs.path.join(allocator, &[_][]const u8{
+        cmd.tmp_dir_name,
+        name_with_ext,
+    });
+
+    try build_args.appendSlice(&[_][]const u8{
+        try std.fmt.allocPrint(allocator, "-femit-bin={}", .{path_to_exe}),
+    });
+
+    std.debug.print("FEMIT: -femit-bin={}\n", .{path_to_exe});
 
     // Build the script
     const result = try ChildProcess.exec(.{
@@ -128,16 +145,6 @@ pub fn buildExe(
             if (exit_code == 0) { // build succeded
                 switch (cmd.expected_outcome) {
                     .SilentSuccess => {
-                        const path_to_exe_dir = mem.trim(u8, result.stdout, " \r\n");
-                        const path_to_exe_basename = try std.fmt.allocPrint(allocator, "{}{}", .{
-                            cmd.name,
-                            target.exeFileExt(),
-                        });
-                        const path_to_exe = try fs.path.join(allocator, &[_][]const u8{
-                            path_to_exe_dir,
-                            path_to_exe_basename,
-                        });
-
                         return path_to_exe;
                     },
                     .Success => {

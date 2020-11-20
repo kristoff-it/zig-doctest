@@ -65,7 +65,34 @@ pub fn runTest(
     //     try test_args.appendSlice(&[_][]const u8{ "-target", triple });
     //     try out.print(" -target {}", .{triple});
     // }
-    const result = render_utils.exec(allocator, env_map, cmd.max_doc_file_size, test_args.items) catch return;
+
+    // TODO: signal stuff
+    var exited_with_signal = false;
+
+    const result = if (cmd.expected_outcome == .Failure) ko: {
+        const result = try ChildProcess.exec(.{
+            .allocator = allocator,
+            .argv = test_args.items,
+            .env_map = env_map,
+            .max_output_bytes = cmd.max_doc_file_size,
+        });
+
+        switch (result.term) {
+            .Exited => |exit_code| {
+                if (exit_code == 0) {
+                    print("{}\nThe following command incorrectly succeeded:\n", .{result.stderr});
+                    render_utils.dumpArgs(test_args.items);
+                    // return parseError(tokenizer, code.source_token, "example incorrectly compiled", .{});
+                    return;
+                }
+            },
+            .Signal => exited_with_signal = true,
+            else => {},
+        }
+        break :ko result;
+    } else ok: {
+        break :ok try render_utils.exec(allocator, env_map, cmd.max_doc_file_size, test_args.items);
+    };
 
     if (cmd.expected_outcome == .Failure) {
         const error_match = cmd.expected_outcome.Failure;
@@ -77,5 +104,8 @@ pub fn runTest(
 
     const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);
     const escaped_stdout = try render_utils.escapeHtml(allocator, result.stdout);
-    try out.print("\n{}{}</code></pre>\n", .{ escaped_stderr, escaped_stdout });
+    const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
+    const colored_stdout = try render_utils.termColor(allocator, escaped_stdout);
+
+    try out.print("\n{}{}</code></pre>\n", .{ colored_stderr, colored_stdout });
 }

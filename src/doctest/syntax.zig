@@ -6,7 +6,7 @@ const render_utils = @import("render_utils.zig");
 pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
     // TODO: who should be doing this cleanup?
     const src = mem.trim(u8, raw_src, " \n");
-    try out.writeAll("<code class=\"zig\">");
+    try out.writeAll("<pre><code class=\"zig\">");
     var tokenizer = std.zig.Tokenizer.init(src);
     var index: usize = 0;
     var next_tok_is_fn = false;
@@ -215,7 +215,7 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
         }
         index = token.loc.end;
     }
-    try out.writeAll("</code>");
+    try out.writeAll("</code></pre>");
 }
 
 // TODO: this function returns anyerror, interesting

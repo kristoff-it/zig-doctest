@@ -12,7 +12,7 @@ const render_utils = @import("render_utils.zig");
 /// `id` is used to differentiate between the different commands (e.g. build-exe, test).
 pub const BuildCommand = struct {
     format: Format,
-    name: []const u8 = "code",
+    name: ?[]const u8 = null,
     is_inline: bool = false,
     mode: builtin.Mode = .Debug,
     link_objects: []const []const u8 = &[0][]u8{},
@@ -42,6 +42,7 @@ pub fn runBuild(
     zig_exe: []const u8,
     cmd: BuildCommand,
 ) !?[]const u8 {
+    const name = cmd.name orelse "test";
     const zig_command = switch (cmd.format) {
         .exe => "build-exe",
         .obj => "build-obj",
@@ -53,7 +54,7 @@ pub fn runBuild(
     var build_args = std.ArrayList([]const u8).init(allocator);
     defer build_args.deinit();
     {
-        const name_plus_ext = try std.fmt.allocPrint(allocator, "{}.zig", .{cmd.name});
+        const name_plus_ext = try std.fmt.allocPrint(allocator, "{}.zig", .{name});
         const tmp_source_file_name = try fs.path.join(
             allocator,
             &[_][]const u8{ cmd.tmp_dir_name, name_plus_ext },
@@ -63,14 +64,14 @@ pub fn runBuild(
 
         try build_args.appendSlice(&[_][]const u8{
             zig_exe,          zig_command,
-            "--name",         cmd.name,
+            "--name",         name,
             "--color",        "on",
             "--enable-cache", tmp_source_file_name,
         });
     }
 
     // Invocation line (continues into the following blocks)
-    try out.print("<pre><code class=\"shell\">$ zig {} {}.zig", .{ zig_command, cmd.name });
+    try out.print("<pre><code class=\"shell\">$ zig {} {}.zig", .{ zig_command, name });
 
     // Add release switches
     switch (cmd.mode) {
@@ -119,7 +120,7 @@ pub fn runBuild(
         .obj => target.dynamicLibSuffix(),
         .lib => target.staticLibSuffix(), // TODO: I don't even know how this stupid naming scheme works, please somebody make this correct for me.
     };
-    const name_with_ext = try std.fmt.allocPrint(allocator, "{}{}", .{ cmd.name, ext });
+    const name_with_ext = try std.fmt.allocPrint(allocator, "{}{}", .{ name, ext });
     const path_to_exe = try fs.path.join(allocator, &[_][]const u8{
         cmd.tmp_dir_name,
         name_with_ext,
@@ -128,8 +129,6 @@ pub fn runBuild(
     try build_args.appendSlice(&[_][]const u8{
         try std.fmt.allocPrint(allocator, "-femit-bin={}", .{path_to_exe}),
     });
-
-    std.debug.print("FEMIT: -femit-bin={}\n", .{path_to_exe});
 
     // Build the script
     const result = try ChildProcess.exec(.{

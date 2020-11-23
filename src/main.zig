@@ -25,41 +25,9 @@ const CommandLineCommand = enum {
 // TODO: refactor duplicated code
 // TODO: json output mode?
 // TODO: caching, of course!
-
-// zig-doctest: build --obj --fail discarded
-
-// TODO: proper parsing, right now quotes are not supported in the comment arg format
-//       see: https://github.com/Hejsil/zig-clap/issues/30
-pub const CommentArgsIterator = struct {
-    buf: []const u8,
-    done: bool = false,
-
-    const Error = error{};
-
-    pub fn next(self: *CommentArgsIterator) Error!?[]const u8 {
-        for (self.buf) |c, idx| {
-            switch (c) {
-                else => {
-                    if (idx == self.buf.len - 1) {
-                        const token = self.buf[0..idx];
-                        self.buf = self.buf[0..0];
-                        return token;
-                    }
-                },
-                ' ' => {
-                    const token = self.buf[0..idx];
-                    self.buf = self.buf[(idx + 1)..];
-                    return token;
-                },
-            }
-        } else {
-            // We consumed the full buf.
-            self.buf = self.buf[0..0];
-        }
-
-        return null;
-    }
-};
+// TODO: code_begin + syntax used to mean --obj, why? now we're changing those to just syntax. Bad idea?
+// TODO: cd into the temp directory to produce cleaner outputs
+// TODO: make sure to match --fail errors in all commands
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -86,7 +54,6 @@ pub fn main() !void {
             var diag: clap.Diagnostic = undefined;
             var args = clap.ComptimeClap(
                 clap.Help,
-                clap.args.OsIterator,
                 &params,
             ).parse(allocator, &args_it, &diag) catch |err| {
                 // Report any useful error and exit
@@ -110,7 +77,10 @@ pub fn main() !void {
                 @panic("the script is empty!");
             };
 
-            var iterator = CommentArgsIterator{ .buf = input_file_bytes[prefix.len..first_newline] };
+            var iterator = clap.args.ShellIterator.init(
+                std.heap.page_allocator,
+                input_file_bytes[prefix.len..first_newline],
+            );
 
             const code_without_args_comment = input_file_bytes[first_newline + 1 ..];
             // Read the real command string from the file
@@ -148,7 +118,6 @@ fn do_syntax(
     var diag: clap.Diagnostic = undefined;
     var args = clap.ComptimeClap(
         clap.Help,
-        @typeInfo(@TypeOf(args_it)).Pointer.child,
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
@@ -193,6 +162,7 @@ fn do_build(
     const summary = "Builds a code snippet, checking for the build to succeed or fail as expected.";
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("-h, --help                     Display this help message") catch unreachable,
+        clap.parseParam("-n, --name <NAME>              Name of the script, defaults to the input filename or `code` when using stdin.") catch unreachable,
         clap.parseParam("-r, --format  <OUTPUT_FORMAT>  Output format, possible values: `exe`, `obj`, `lib`, defaults to `exe`") catch unreachable,
         clap.parseParam("-f, --fail <MATCH>             Expect the build command to encounter a compile error containing some text that is expected to be present in stderr") catch unreachable,
         clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
@@ -205,7 +175,6 @@ fn do_build(
     var diag: clap.Diagnostic = undefined;
     var args = clap.ComptimeClap(
         clap.Help,
-        @typeInfo(@TypeOf(args_it)).Pointer.child,
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
@@ -233,6 +202,12 @@ fn do_build(
         }
         break :blk try open_output(args.option("--out_file"));
     };
+
+    // Choose the right name for this example
+    const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
+
+    // Print the filename element
+    try buffered_out_stream.writer().print("<p class=\"file\">{}.zig</p>", .{name});
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -273,6 +248,7 @@ fn do_build(
         &env_map,
         args.option("--zig_exe") orelse "zig",
         doctest.BuildCommand{
+            .name = name,
             .format = output_format,
             .tmp_dir_name = tmp_dir_name,
             .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
@@ -296,6 +272,7 @@ fn do_run(
     const summary = "Compiles and runs a code snippet, checking for the execution to succeed or fail as expected.";
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("-h, --help                     Display this help message") catch unreachable,
+        clap.parseParam("-n, --name <NAME>              Name of the script, defaults to the input filename or `code` when using stdin.") catch unreachable,
         clap.parseParam("-f, --fail <MATCH>             Expect the execution to encounter a runtime error, optionally provide some text that is expected to be present in stderr") catch unreachable,
         clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
         clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
@@ -305,7 +282,6 @@ fn do_run(
     var diag: clap.Diagnostic = undefined;
     var args = clap.ComptimeClap(
         clap.Help,
-        @typeInfo(@TypeOf(args_it)).Pointer.child,
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
@@ -333,6 +309,12 @@ fn do_run(
         }
         break :blk try open_output(args.option("--out_file"));
     };
+
+    // Choose the right name for this example
+    const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
+
+    // Print the filename element
+    try buffered_out_stream.writer().print("<p class=\"file\">{}.zig</p>", .{name});
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -364,6 +346,7 @@ fn do_run(
         args.option("--zig_exe") orelse "zig",
         doctest.BuildCommand{
             .format = .exe,
+            .name = name,
             .tmp_dir_name = tmp_dir_name,
             .expected_outcome = .SilentSuccess,
             .target_str = null,
@@ -396,6 +379,7 @@ fn do_test(
     const summary = "Tests a code snippet, checking for the test to succeed or fail as expected.";
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("-h, --help                     Display this help message") catch unreachable,
+        clap.parseParam("-n, --name <NAME>              Name of the script, defaults to the input filename or `code` when using stdin.") catch unreachable,
         clap.parseParam("-f, --fail <MATCH>             Expect the test to fail, optionally provide some text that is expected to be present in stderr") catch unreachable,
         clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
         clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
@@ -405,7 +389,6 @@ fn do_test(
     var diag: clap.Diagnostic = undefined;
     var args = clap.ComptimeClap(
         clap.Help,
-        @typeInfo(@TypeOf(args_it)).Pointer.child,
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
@@ -433,6 +416,12 @@ fn do_test(
         }
         break :blk try open_output(args.option("--out_file"));
     };
+
+    // Choose the right name for this example
+    const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
+
+    // Print the filename element
+    try buffered_out_stream.writer().print("<p class=\"file\">{}.zig</p>", .{name});
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -462,6 +451,7 @@ fn do_test(
         &env_map,
         args.option("--zig_exe") orelse "zig",
         doctest.TestCommand{
+            .name = name,
             .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
             .tmp_dir_name = tmp_dir_name,
         },
@@ -498,6 +488,18 @@ fn read_input(allocator: *mem.Allocator, input: ?[]const u8) ![]const u8 {
     defer in_file.close();
 
     return try in_file.reader().readAllAlloc(allocator, max_doc_file_size);
+}
+
+// TODO: this way of chopping of the file extension seems kinda dumb.
+// What should we do if somebody is passing in a .md file, for example?
+fn choose_test_name(in_file: ?[]const u8) ?[]const u8 {
+    return if (in_file) |in_file_name| blk: {
+        const name_with_ext = fs.path.basename(in_file_name);
+        if (mem.endsWith(u8, name_with_ext, ".zig")) {
+            break :blk name_with_ext[0 .. name_with_ext.len - 3];
+        }
+        break :blk name_with_ext;
+    } else null;
 }
 
 fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const u8 {

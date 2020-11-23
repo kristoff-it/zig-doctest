@@ -9,7 +9,7 @@ const process = std.process;
 const render_utils = @import("render_utils.zig");
 
 pub const TestCommand = struct {
-    name: []const u8 = "code",
+    name: ?[]const u8 = null,
     is_inline: bool = false,
     mode: builtin.Mode = .Debug,
     link_objects: []const []const u8 = &[0][]u8{},
@@ -31,7 +31,8 @@ pub fn runTest(
     zig_exe: []const u8,
     cmd: TestCommand,
 ) !void {
-    const name_plus_ext = try std.fmt.allocPrint(allocator, "{}.zig", .{cmd.name});
+    const name = cmd.name orelse "test";
+    const name_plus_ext = try std.fmt.allocPrint(allocator, "{}.zig", .{name});
     const tmp_source_file_name = try fs.path.join(
         allocator,
         &[_][]const u8{ cmd.tmp_dir_name, name_plus_ext },
@@ -49,7 +50,7 @@ pub fn runTest(
         tmp_source_file_name,
     });
 
-    try out.print("<pre><code class=\"shell\">$ zig test {}.zig", .{cmd.name});
+    try out.print("<pre><code class=\"shell\">$ zig test {}.zig", .{name});
     switch (cmd.mode) {
         .Debug => {},
         else => {
@@ -97,8 +98,8 @@ pub fn runTest(
     if (cmd.expected_outcome == .Failure) {
         const error_match = cmd.expected_outcome.Failure;
         if (mem.indexOf(u8, result.stderr, error_match) == null) {
-            print("{}\nExpected to find '{}' in stderr\n", .{ result.stderr, error_match });
-            return;
+            print("Expected to find '{}' in stderr\n{}\n", .{ error_match, result.stderr });
+            return error.ErrorMismatch;
         }
     }
 

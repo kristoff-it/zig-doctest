@@ -14,6 +14,8 @@ const CommandLineCommand = enum {
     build,
     run,
     @"test",
+    help,
+    @"--help",
 };
 
 // TODO: test (and maybe run?) should differentiate between panics and other error conditions.
@@ -92,12 +94,14 @@ pub fn main() !void {
                 .run => try do_run(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
                 .build => try do_build(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
                 .@"test" => try do_test(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
+                .help, .@"--help" => @panic("`help` cannot be used inside the zig-doctest comment"),
             }
         },
         .syntax => try do_syntax(allocator, &args_it, false, {}, {}),
         .build => try do_build(allocator, &args_it, false, {}, {}),
         .run => try do_run(allocator, &args_it, false, {}, {}),
         .@"test" => try do_test(allocator, &args_it, false, {}, {}),
+        .help, .@"--help" => show_main_help(),
     }
 }
 
@@ -513,4 +517,24 @@ fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const 
     errdefer allocator.free(name);
 
     return try std.fmt.bufPrint(name, "{}{x}", .{ prefix, buf });
+}
+
+fn show_main_help() void {
+    std.debug.print("{}", .{
+        \\Doctest runs a Zig code snippet and provides both syntax 
+        \\highlighting and colored output in HTML format.
+        \\
+        \\Available commands: syntax, build, test, run, inline, help.
+        \\
+        \\Put the `--help` flag after the command to get command-specific
+        \\help.
+        \\
+        \\Examples:
+        \\
+        \\ ./doctest syntax --in_file=foo.zig 
+        \\ ./doctest build --obj --fail "not handled in switch"
+        \\ ./doctest test --out_file bar.zig --zig_exe="/Downloads/zig/bin/zig"
+        \\
+        \\
+    });
 }

@@ -16,7 +16,7 @@ pub fn build(b: *Builder) void {
     exe.setBuildMode(mode);
 
     exe.addPackagePath("clap", "zig-clap/clap.zig");
-
+    exe.setOutputDir(".");
     exe.install();
 
     const run_cmd = exe.run();

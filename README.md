@@ -7,6 +7,10 @@ Doctest is a code rendering tool that on top of providing syntax highlighting it
 
 Other than the syntax highlighting, this tool gives you the option of testing scripts that are exptected to fail. This is something that the built-in testing framework of Zig doesn't allow to do in the same way. This is particularly useful when demoing things like runtime checks in safe release modes, which will cause the executable to crash.
 
+## Building 
+```
+$ zig build 
+```
 
 ## Usage
 ```
@@ -21,4 +25,3 @@ Examples:
  ./doctest build --obj --fail "not handled in switch"
  ./doctest test --out_file bar.zig --zig_exe="/Downloads/zig/bin/zig"
 ```
-

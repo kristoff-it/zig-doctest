@@ -40,7 +40,7 @@ pub fn main() !void {
     var args_it = try clap.args.OsIterator.init(allocator);
     defer args_it.deinit();
 
-    const command_name = (try args_it.next()) orelse @panic("expected command arg");
+    const command_name = (try args_it.next()) orelse show_main_help();
 
     @setEvalBranchQuota(10000);
     const command = std.meta.stringToEnum(CommandLineCommand, command_name) orelse @panic("unknown command");
@@ -519,7 +519,7 @@ fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const 
     return try std.fmt.bufPrint(name, "{}{x}", .{ prefix, buf });
 }
 
-fn show_main_help() void {
+fn show_main_help() noreturn {
     std.debug.print("{}", .{
         \\Doctest runs a Zig code snippet and provides both syntax 
         \\highlighting and colored output in HTML format.
@@ -537,4 +537,5 @@ fn show_main_help() void {
         \\
         \\
     });
+    std.os.exit(0);
 }

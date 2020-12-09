@@ -473,9 +473,7 @@ fn check_help(comptime summary: []const u8, comptime params: anytype, args: anyt
     }
 }
 
-// Nothing to see here, just a normal elegant generic type.
-const BufferedFileType = @TypeOf(io.bufferedWriter((std.fs.File{ .handle = 0 }).writer()));
-fn open_output(output: ?[]const u8) !BufferedFileType {
+fn open_output(output: ?[]const u8) !io.BufferedWriter(4096, fs.File.Writer) {
     const out_file = if (output) |out_file_name|
         try fs.cwd().createFile(out_file_name, .{})
     else

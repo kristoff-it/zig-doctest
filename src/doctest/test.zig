@@ -32,7 +32,7 @@ pub fn runTest(
     cmd: TestCommand,
 ) !void {
     const name = cmd.name orelse "test";
-    const name_plus_ext = try std.fmt.allocPrint(allocator, "{}.zig", .{name});
+    const name_plus_ext = try std.fmt.allocPrint(allocator, "{s}.zig", .{name});
     const tmp_source_file_name = try fs.path.join(
         allocator,
         &[_][]const u8{ cmd.tmp_dir_name, name_plus_ext },
@@ -50,7 +50,7 @@ pub fn runTest(
         tmp_source_file_name,
     });
 
-    try out.print("<pre><code class=\"shell\">$ zig test {}.zig", .{name});
+    try out.print("<pre><code class=\"shell\">$ zig test {s}.zig", .{name});
     switch (cmd.mode) {
         .Debug => {},
         else => {
@@ -81,7 +81,7 @@ pub fn runTest(
         switch (result.term) {
             .Exited => |exit_code| {
                 if (exit_code == 0) {
-                    print("{}\nThe following command incorrectly succeeded:\n", .{result.stderr});
+                    print("{s}\nThe following command incorrectly succeeded:\n", .{result.stderr});
                     render_utils.dumpArgs(test_args.items);
                     // return parseError(tokenizer, code.source_token, "example incorrectly compiled", .{});
                     return;
@@ -98,7 +98,7 @@ pub fn runTest(
     if (cmd.expected_outcome == .Failure) {
         const error_match = cmd.expected_outcome.Failure;
         if (mem.indexOf(u8, result.stderr, error_match) == null) {
-            print("Expected to find '{}' in stderr\n{}\n", .{ error_match, result.stderr });
+            print("Expected to find '{s}' in stderr\n{s}\n", .{ error_match, result.stderr });
             return error.ErrorMismatch;
         }
     }
@@ -108,5 +108,5 @@ pub fn runTest(
     const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
     const colored_stdout = try render_utils.termColor(allocator, escaped_stdout);
 
-    try out.print("\n{}{}</code></pre>\n", .{ colored_stderr, colored_stdout });
+    try out.print("\n{s}{s}</code></pre>\n", .{ colored_stderr, colored_stdout });
 }

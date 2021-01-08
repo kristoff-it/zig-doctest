@@ -29,7 +29,7 @@ pub const BuildCommand = struct {
 
 fn dumpArgs(args: []const []const u8) void {
     for (args) |arg|
-        print("{} ", .{arg})
+        print("{s} ", .{arg})
     else
         print("\n", .{});
 }
@@ -54,7 +54,7 @@ pub fn runBuild(
     var build_args = std.ArrayList([]const u8).init(allocator);
     defer build_args.deinit();
     {
-        const name_plus_ext = try std.fmt.allocPrint(allocator, "{}.zig", .{name});
+        const name_plus_ext = try std.fmt.allocPrint(allocator, "{s}.zig", .{name});
         const tmp_source_file_name = try fs.path.join(
             allocator,
             &[_][]const u8{ cmd.tmp_dir_name, name_plus_ext },
@@ -71,7 +71,7 @@ pub fn runBuild(
     }
 
     // Invocation line (continues into the following blocks)
-    try out.print("<pre><code class=\"shell\">$ zig {} {}.zig", .{ zig_command, name });
+    try out.print("<pre><code class=\"shell\">$ zig {s} {s}.zig", .{ zig_command, name });
 
     // Add release switches
     switch (cmd.mode) {
@@ -86,7 +86,7 @@ pub fn runBuild(
     for (cmd.link_objects) |link_object| {
         // TODO: we're setting the obj file extension before parsing
         //       the provided crosstarget string. Prob not ok.
-        const name_with_ext = try std.fmt.allocPrint(allocator, "{}{}", .{ link_object, BuildCommand.obj_ext });
+        const name_with_ext = try std.fmt.allocPrint(allocator, "{s}{s}", .{ link_object, BuildCommand.obj_ext });
         const full_path_object = try fs.path.join(
             allocator,
             &[_][]const u8{ cmd.tmp_dir_name, name_with_ext },
@@ -110,7 +110,7 @@ pub fn runBuild(
     if (cmd.target_str) |triple| {
         try build_args.appendSlice(&[_][]const u8{ "-target", triple });
         if (!cmd.is_inline) {
-            try out.print(" -target {}", .{triple});
+            try out.print(" -target {s}", .{triple});
         }
     }
 
@@ -120,14 +120,14 @@ pub fn runBuild(
         .obj => target.dynamicLibSuffix(),
         .lib => target.staticLibSuffix(), // TODO: I don't even know how this stupid naming scheme works, please somebody make this correct for me.
     };
-    const name_with_ext = try std.fmt.allocPrint(allocator, "{}{}", .{ name, ext });
+    const name_with_ext = try std.fmt.allocPrint(allocator, "{s}{s}", .{ name, ext });
     const path_to_exe = try fs.path.join(allocator, &[_][]const u8{
         cmd.tmp_dir_name,
         name_with_ext,
     });
 
     try build_args.appendSlice(&[_][]const u8{
-        try std.fmt.allocPrint(allocator, "-femit-bin={}", .{path_to_exe}),
+        try std.fmt.allocPrint(allocator, "-femit-bin={s}", .{path_to_exe}),
     });
 
     // Build the script
@@ -149,12 +149,12 @@ pub fn runBuild(
                     .Success => {
                         const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);
                         const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
-                        try out.print("\n{}</code></pre>\n", .{colored_stderr});
+                        try out.print("\n{s}</code></pre>\n", .{colored_stderr});
 
                         return null; // TODO: return values are confusing the way they are now.
                     },
                     .Failure => {
-                        print("{}\nThe following command incorrectly succeeded:\n", .{result.stderr});
+                        print("{s}\nThe following command incorrectly succeeded:\n", .{result.stderr});
                         render_utils.dumpArgs(build_args.items);
                         return null;
                     },
@@ -162,7 +162,7 @@ pub fn runBuild(
             } else { // build failed
                 switch (cmd.expected_outcome) {
                     .Success, .SilentSuccess => {
-                        print("{}\nBuild failed unexpectedly\n", .{result.stderr});
+                        print("{s}\nBuild failed unexpectedly\n", .{result.stderr});
                         render_utils.dumpArgs(build_args.items);
                         return null;
                         // return parseError(tokenizer, code.source_token, "example failed to compile", .{});
@@ -170,14 +170,14 @@ pub fn runBuild(
                     .Failure => {
                         const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);
                         const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
-                        try out.print("\n{}</code></pre>\n", .{colored_stderr});
+                        try out.print("\n{s}</code></pre>\n", .{colored_stderr});
                         return null;
                     },
                 }
             }
         },
         else => {
-            print("{}\nThe following command crashed:\n", .{result.stderr});
+            print("{s}\nThe following command crashed:\n", .{result.stderr});
             render_utils.dumpArgs(build_args.items);
             // return parseError(tokenizer, code.source_token, "example compile crashed", .{});
             return error.BuildError;

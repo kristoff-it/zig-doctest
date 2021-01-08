@@ -225,9 +225,9 @@ fn parseError(src: []const u8, token: std.zig.Token, comptime fmt: []const u8, a
     // print("{}:{}:{}: error: " ++ fmt ++ "\n", args_prefix ++ args);
 
     const args_prefix = .{ loc.line + 1, loc.column + 1 };
-    print("{}:{}: error: " ++ fmt ++ "\n", args_prefix ++ args);
+    print("{d}:{d}: error: " ++ fmt ++ "\n", args_prefix ++ args);
     if (loc.line_start <= loc.line_end) {
-        print("{}\n", .{src[loc.line_start..loc.line_end]});
+        print("{s}\n", .{src[loc.line_start..loc.line_end]});
         {
             var i: usize = 0;
             while (i < loc.column) : (i += 1) {

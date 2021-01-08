@@ -211,7 +211,7 @@ fn do_build(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    try buffered_out_stream.writer().print("<p class=\"file\">{}.zig</p>", .{name});
+    try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -318,7 +318,7 @@ fn do_run(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    try buffered_out_stream.writer().print("<p class=\"file\">{}.zig</p>", .{name});
+    try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -425,7 +425,7 @@ fn do_test(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    try buffered_out_stream.writer().print("<p class=\"file\">{}.zig</p>", .{name});
+    try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -466,14 +466,16 @@ fn do_test(
 
 fn check_help(comptime summary: []const u8, comptime params: anytype, args: anytype) void {
     if (args.flag("--help")) {
-        std.debug.print("{}\n\n", .{summary});
+        std.debug.print("{s}\n\n", .{summary});
         clap.help(io.getStdErr().writer(), params) catch {};
         std.debug.print("\n", .{});
         std.os.exit(0);
     }
 }
 
-fn open_output(output: ?[]const u8) !io.BufferedWriter(4096, fs.File.Writer) {
+// Nothing to see here, just a normal elegant generic type.
+const BufferedFileType = @TypeOf(io.bufferedWriter((std.fs.File{ .handle = 0 }).writer()));
+fn open_output(output: ?[]const u8) !BufferedFileType {
     const out_file = if (output) |out_file_name|
         try fs.cwd().createFile(out_file_name, .{})
     else
@@ -514,11 +516,11 @@ fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const 
     var name = try allocator.alloc(u8, prefix.len + 8);
     errdefer allocator.free(name);
 
-    return try std.fmt.bufPrint(name, "{}{x}", .{ prefix, buf });
+    return try std.fmt.bufPrint(name, "{s}{x}", .{ prefix, buf });
 }
 
 fn show_main_help() noreturn {
-    std.debug.print("{}", .{
+    std.debug.print("{s}", .{
         \\Doctest runs a Zig code snippet and provides both syntax 
         \\highlighting and colored output in HTML format.
         \\

@@ -5,7 +5,7 @@ const ChildProcess = std.ChildProcess;
 
 pub fn dumpArgs(args: []const []const u8) void {
     for (args) |arg|
-        print("{} ", .{arg})
+        print("{s} ", .{arg})
     else
         print("\n", .{});
 }
@@ -124,7 +124,7 @@ pub fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {
                         try out.writeAll("</span>");
                     }
                     if (first_number != 0 or second_number != 0) {
-                        try out.print("<span class=\"t{}_{}\">", .{ first_number, second_number });
+                        try out.print("<span class=\"t{d}_{d}\">", .{ first_number, second_number });
                         open_span_count += 1;
                     }
                 },
@@ -150,13 +150,13 @@ pub fn exec(
     switch (result.term) {
         .Exited => |exit_code| {
             if (exit_code != 0) {
-                print("{}\nThe following command exited with code {}:\n", .{ result.stderr, exit_code });
+                print("{s}\nThe following command exited with code {d}:\n", .{ result.stderr, exit_code });
                 dumpArgs(args);
                 return error.ChildExitError;
             }
         },
         else => {
-            print("{}\nThe following command crashed:\n", .{result.stderr});
+            print("{s}\nThe following command crashed:\n", .{result.stderr});
             dumpArgs(args);
             return error.ChildCrashed;
         },

@@ -34,7 +34,7 @@ pub fn runExe(
         switch (result.term) {
             .Exited => |exit_code| {
                 if (exit_code == 0) {
-                    print("{}\nThe following command incorrectly succeeded:\n", .{result.stderr});
+                    print("{s}\nThe following command incorrectly succeeded:\n", .{result.stderr});
                     render_utils.dumpArgs(run_args);
                     // return parseError(tokenizer, code.source_token, "example incorrectly compiled", .{});
                     return;
@@ -54,7 +54,7 @@ pub fn runExe(
     const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
     const colored_stdout = try render_utils.termColor(allocator, escaped_stdout);
 
-    try out.print("\n$ ./{}\n{}{}", .{ fs.path.basename(path_to_exe), colored_stdout, colored_stderr });
+    try out.print("\n$ ./{s}\n{s}{s}", .{ fs.path.basename(path_to_exe), colored_stdout, colored_stderr });
     if (exited_with_signal) {
         try out.print("(process terminated by signal)", .{});
     }

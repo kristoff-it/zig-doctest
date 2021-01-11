@@ -14,7 +14,7 @@ pub fn escapeHtml(allocator: *mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
-    const out = buf.outStream();
+    const out = buf.writer();
     try writeEscaped(out, input);
     return buf.toOwnedSlice();
 }
@@ -60,7 +60,7 @@ pub fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
-    var out = buf.outStream();
+    var out = buf.writer();
     var number_start_index: usize = undefined;
     var first_number: usize = undefined;
     var second_number: usize = undefined;

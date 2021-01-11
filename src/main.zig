@@ -59,7 +59,7 @@ pub fn main() !void {
                 &params,
             ).parse(allocator, &args_it, &diag) catch |err| {
                 // Report any useful error and exit
-                diag.report(std.io.getStdErr().outStream(), err) catch {};
+                diag.report(std.io.getStdErr().writer(), err) catch {};
                 return err;
             };
             check_help(summary, &params, args);
@@ -125,7 +125,7 @@ fn do_syntax(
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
-        diag.report(std.io.getStdErr().outStream(), err) catch {};
+        diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
     };
     check_help(summary, &params, args);
@@ -182,7 +182,7 @@ fn do_build(
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
-        diag.report(std.io.getStdErr().outStream(), err) catch {};
+        diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
     };
     check_help(summary, &params, args);
@@ -289,7 +289,7 @@ fn do_run(
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
-        diag.report(std.io.getStdErr().outStream(), err) catch {};
+        diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
     };
     check_help(summary, &params, args);
@@ -396,7 +396,7 @@ fn do_test(
         &params,
     ).parse(allocator, args_it, &diag) catch |err| {
         // Report any useful error and exit
-        diag.report(std.io.getStdErr().outStream(), err) catch {};
+        diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
     };
     check_help(summary, &params, args);

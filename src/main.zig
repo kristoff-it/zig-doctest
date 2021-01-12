@@ -497,13 +497,12 @@ fn read_input(allocator: *mem.Allocator, input: ?[]const u8) ![]const u8 {
 // TODO: this way of chopping of the file extension seems kinda dumb.
 // What should we do if somebody is passing in a .md file, for example?
 fn choose_test_name(in_file: ?[]const u8) ?[]const u8 {
-    return if (in_file) |in_file_name| blk: {
-        const name_with_ext = fs.path.basename(in_file_name);
-        if (mem.endsWith(u8, name_with_ext, ".zig")) {
-            break :blk name_with_ext[0 .. name_with_ext.len - 3];
-        }
-        break :blk name_with_ext;
-    } else null;
+    const in_file_name = in_file orelse return "test";
+    const name_with_ext = fs.path.basename(in_file_name);
+    if (mem.endsWith(u8, name_with_ext, ".zig")) {
+        return name_with_ext[0 .. name_with_ext.len - 3];
+    }
+    return name_with_ext;
 }
 
 fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const u8 {

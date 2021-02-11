@@ -272,10 +272,10 @@ pub const Diagnostic = struct {
             Arg{ .prefix = "", .name = diag.arg };
 
         switch (err) {
-            error.DoesntTakeValue => try stream.print("The argument '{}{}' does not take a value\n", .{ a.prefix, a.name }),
-            error.MissingValue => try stream.print("The argument '{}{}' requires a value but none was supplied\n", .{ a.prefix, a.name }),
-            error.InvalidArgument => try stream.print("Invalid argument '{}{}'\n", .{ a.prefix, a.name }),
-            else => try stream.print("Error while parsing arguments: {}\n", .{@errorName(err)}),
+            error.DoesntTakeValue => try stream.print("The argument '{s}{s}' does not take a value\n", .{ a.prefix, a.name }),
+            error.MissingValue => try stream.print("The argument '{s}{s}' requires a value but none was supplied\n", .{ a.prefix, a.name }),
+            error.InvalidArgument => try stream.print("Invalid argument '{s}{s}'\n", .{ a.prefix, a.name }),
+            else => try stream.print("Error while parsing arguments: {s}\n", .{@errorName(err)}),
         }
     }
 };
@@ -393,7 +393,7 @@ pub fn helpFull(
         try stream.print("\t", .{});
         try printParam(counting_stream.writer(), Id, param, Error, context, valueText);
         try stream.writeByteNTimes(' ', max_spacing - @intCast(usize, counting_stream.bytes_written));
-        try stream.print("\t{}\n", .{try helpText(context, param)});
+        try stream.print("\t{s}\n", .{try helpText(context, param)});
     }
 }
 
@@ -417,13 +417,13 @@ fn printParam(
             try stream.print("  ", .{});
         }
 
-        try stream.print("--{}", .{l});
+        try stream.print("--{s}", .{l});
     }
 
     switch (param.takes_value) {
         .None => {},
-        .One => try stream.print(" <{}>", .{valueText(context, param)}),
-        .Many => try stream.print(" <{}>...", .{valueText(context, param)}),
+        .One => try stream.print(" <{s}>", .{valueText(context, param)}),
+        .Many => try stream.print(" <{s}>...", .{valueText(context, param)}),
     }
 }
 

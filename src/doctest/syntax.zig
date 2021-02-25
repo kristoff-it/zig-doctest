@@ -67,13 +67,13 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
             .keyword_while,
             .keyword_anytype,
             => {
-                try out.writeAll("<span class=\"tok-kw\">");
+                try out.writeAll("<span class=\"tok tok-kw\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
 
             .keyword_fn => {
-                try out.writeAll("<span class=\"tok-kw\">");
+                try out.writeAll("<span class=\"tok tok-kw\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
                 next_tok_is_fn = true;
@@ -84,7 +84,7 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
             .keyword_true,
             .keyword_false,
             => {
-                try out.writeAll("<span class=\"tok-null\">");
+                try out.writeAll("<span class=\"tok tok-null\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
@@ -93,13 +93,13 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
             .multiline_string_literal_line,
             .char_literal,
             => {
-                try out.writeAll("<span class=\"tok-str\">");
+                try out.writeAll("<span class=\"tok tok-str\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
 
             .builtin => {
-                try out.writeAll("<span class=\"tok-builtin\">");
+                try out.writeAll("<span class=\"tok tok-builtin\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
@@ -107,14 +107,14 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
             .doc_comment,
             .container_doc_comment,
             => {
-                try out.writeAll("<span class=\"tok-comment\">");
+                try out.writeAll("<span class=\"tok tok-comment\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
 
             .identifier => {
                 if (prev_tok_was_fn) {
-                    try out.writeAll("<span class=\"tok-fn\">");
+                    try out.writeAll("<span class=\"tok tok-fn\">");
                     try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                     try out.writeAll("</span>");
                 } else {
@@ -131,11 +131,13 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
                         break :blk true;
                     };
                     if (is_int or isType(src[token.loc.start..token.loc.end])) {
-                        try out.writeAll("<span class=\"tok-type\">");
+                        try out.writeAll("<span class=\"tok tok-type\">");
                         try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                         try out.writeAll("</span>");
                     } else {
+                        try out.writeAll("<span class=\"tok\">");
                         try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
+                        try out.writeAll("</span>");
                     }
                 }
             },
@@ -143,7 +145,7 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
             .integer_literal,
             .float_literal,
             => {
-                try out.writeAll("<span class=\"tok-number\">");
+                try out.writeAll("<span class=\"tok tok-number\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
@@ -202,8 +204,11 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
             .angle_bracket_angle_bracket_right,
             .angle_bracket_angle_bracket_right_equal,
             .tilde,
-            => try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]),
-
+            => {
+                try out.writeAll("<span class=\"tok tok-symbol\">");
+                try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
+                try out.writeAll("</span>");
+            },
             .invalid, .invalid_ampersands, .invalid_periodasterisks => return parseError(
                 src,
                 token,

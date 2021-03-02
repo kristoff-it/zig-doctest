@@ -515,7 +515,7 @@ fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const 
     var name = try allocator.alloc(u8, prefix.len + 8);
     errdefer allocator.free(name);
 
-    return try std.fmt.bufPrint(name, "{s}{x}", .{ prefix, buf });
+    return try std.fmt.bufPrint(name, "{s}{}", .{ prefix, std.fmt.fmtSliceHexLower(&buf) });
 }
 
 fn show_main_help() noreturn {

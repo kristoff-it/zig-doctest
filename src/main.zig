@@ -174,6 +174,7 @@ fn do_build(
         clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
         clap.parseParam("-t, --target <TARGET>          Compilation target, expected as a arch-os-abi tripled (e.g. `x86_64-linux-gnu`) defaults to `native`") catch unreachable,
         clap.parseParam("-k, --keep                     Don't delete the temp folder, useful for debugging the resulting executable.") catch unreachable,
+        clap.parseParam("-s, --skip_output              Don't show output from building the snippet, just build it.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -245,20 +246,37 @@ fn do_build(
     else
         .exe;
 
-    _ = try doctest.runBuild(
-        allocator,
-        input_file_bytes,
-        buffered_out_stream.writer(),
-        &env_map,
-        args.option("--zig_exe") orelse "zig",
-        doctest.BuildCommand{
-            .name = name,
-            .format = output_format,
-            .tmp_dir_name = tmp_dir_name,
-            .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
-            .target_str = args.option("--target"),
-        },
-    );
+    if (args.flag("--skip_output")) {
+        _ = try doctest.runBuild(
+            allocator,
+            input_file_bytes,
+            std.io.null_writer,
+            &env_map,
+            args.option("--zig_exe") orelse "zig",
+            doctest.BuildCommand{
+                .name = name,
+                .format = output_format,
+                .tmp_dir_name = tmp_dir_name,
+                .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+                .target_str = args.option("--target"),
+            },
+        );
+    } else {
+        _ = try doctest.runBuild(
+            allocator,
+            input_file_bytes,
+            buffered_out_stream.writer(),
+            &env_map,
+            args.option("--zig_exe") orelse "zig",
+            doctest.BuildCommand{
+                .name = name,
+                .format = output_format,
+                .tmp_dir_name = tmp_dir_name,
+                .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+                .target_str = args.option("--target"),
+            },
+        );
+    }
 
     try buffered_out_stream.flush();
 }
@@ -520,17 +538,17 @@ fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const 
 
 fn show_main_help() noreturn {
     std.debug.print("{s}", .{
-        \\Doctest runs a Zig code snippet and provides both syntax 
+        \\Doctest runs a Zig code snippet and provides both syntax
         \\highlighting and colored output in HTML format.
         \\
-        \\Available commands: syntax, build, test, run, inline, help.
+        \\Available commands: syntax, build, test, run, inline, help
         \\
         \\Put the `--help` flag after the command to get command-specific
         \\help.
         \\
         \\Examples:
         \\
-        \\ ./doctest syntax --in_file=foo.zig 
+        \\ ./doctest syntax --in_file=foo.zig
         \\ ./doctest build --obj --fail "not handled in switch"
         \\ ./doctest test --out_file bar.zig --zig_exe="/Downloads/zig/bin/zig"
         \\

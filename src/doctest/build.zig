@@ -151,12 +151,12 @@ pub fn runBuild(
                         const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
                         try out.print("\n{s}</code></pre>\n", .{colored_stderr});
 
-                        return null; // TODO: return values are confusing the way they are now.
+                        return null;
                     },
                     .Failure => {
                         print("{s}\nThe following command incorrectly succeeded:\n", .{result.stderr});
                         render_utils.dumpArgs(build_args.items);
-                        return null;
+                        return error.BuildSuccededWhenExpectingFailure;
                     },
                 }
             } else { // build failed
@@ -164,8 +164,7 @@ pub fn runBuild(
                     .Success, .SilentSuccess => {
                         print("{s}\nBuild failed unexpectedly\n", .{result.stderr});
                         render_utils.dumpArgs(build_args.items);
-                        return null;
-                        // return parseError(tokenizer, code.source_token, "example failed to compile", .{});
+                        return error.BuildFailed;
                     },
                     .Failure => {
                         const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);

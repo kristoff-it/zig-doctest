@@ -174,7 +174,7 @@ fn do_build(
         clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
         clap.parseParam("-t, --target <TARGET>          Compilation target, expected as a arch-os-abi tripled (e.g. `x86_64-linux-gnu`) defaults to `native`") catch unreachable,
         clap.parseParam("-k, --keep                     Don't delete the temp folder, useful for debugging the resulting executable.") catch unreachable,
-        clap.parseParam("-s, --skip_output              Don't show output from building the snippet, just build it.") catch unreachable,
+        clap.parseParam("-s, --skip_output              Don't show output from building the snippet.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -212,7 +212,9 @@ fn do_build(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    if (args.option("--name") != null) {
+        try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    }
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -246,6 +248,14 @@ fn do_build(
     else
         .exe;
 
+    const cmd_options = doctest.BuildCommand{
+        .name = name,
+        .format = output_format,
+        .tmp_dir_name = tmp_dir_name,
+        .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+        .target_str = args.option("--target"),
+    };
+
     if (args.flag("--skip_output")) {
         _ = try doctest.runBuild(
             allocator,
@@ -253,13 +263,7 @@ fn do_build(
             std.io.null_writer,
             &env_map,
             args.option("--zig_exe") orelse "zig",
-            doctest.BuildCommand{
-                .name = name,
-                .format = output_format,
-                .tmp_dir_name = tmp_dir_name,
-                .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
-                .target_str = args.option("--target"),
-            },
+            cmd_options,
         );
     } else {
         _ = try doctest.runBuild(
@@ -268,13 +272,7 @@ fn do_build(
             buffered_out_stream.writer(),
             &env_map,
             args.option("--zig_exe") orelse "zig",
-            doctest.BuildCommand{
-                .name = name,
-                .format = output_format,
-                .tmp_dir_name = tmp_dir_name,
-                .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
-                .target_str = args.option("--target"),
-            },
+            cmd_options,
         );
     }
 
@@ -299,6 +297,7 @@ fn do_run(
         clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
         clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
         clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
+        clap.parseParam("-s, --skip_output              Don't show output from running the snippet.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -336,7 +335,9 @@ fn do_run(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    if (args.option("--name") != null) {
+        try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    }
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -360,32 +361,55 @@ fn do_run(
     };
 
     // Build the code and write the resulting output
-    const executable_path = try doctest.runBuild(
-        allocator,
-        input_file_bytes,
-        buffered_out_stream.writer(),
-        &env_map,
-        args.option("--zig_exe") orelse "zig",
-        doctest.BuildCommand{
-            .format = .exe,
-            .name = name,
-            .tmp_dir_name = tmp_dir_name,
-            .expected_outcome = .SilentSuccess,
-            .target_str = null,
-        },
-    );
+    const cmd_options = doctest.BuildCommand{
+        .format = .exe,
+        .name = name,
+        .tmp_dir_name = tmp_dir_name,
+        .expected_outcome = .SilentSuccess,
+        .target_str = null,
+    };
+
+    const executable_path = if (args.flag("--skip_output"))
+        try doctest.runBuild(
+            allocator,
+            input_file_bytes,
+            std.io.null_writer,
+            &env_map,
+            args.option("--zig_exe") orelse "zig",
+            cmd_options,
+        )
+    else
+        try doctest.runBuild(
+            allocator,
+            input_file_bytes,
+            buffered_out_stream.writer(),
+            &env_map,
+            args.option("--zig_exe") orelse "zig",
+            cmd_options,
+        );
 
     // Missing executable path means that the build failed.
     if (executable_path) |exe_path| {
-        const run_outcome = try doctest.runExe(
-            allocator,
-            exe_path,
-            buffered_out_stream.writer(),
-            &env_map,
-            doctest.RunCommand{
-                .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
-            },
-        );
+        const run_outcome = if (args.flag("--skip_output"))
+            try doctest.runExe(
+                allocator,
+                exe_path,
+                std.io.null_writer,
+                &env_map,
+                doctest.RunCommand{
+                    .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+                },
+            )
+        else
+            try doctest.runExe(
+                allocator,
+                exe_path,
+                buffered_out_stream.writer(),
+                &env_map,
+                doctest.RunCommand{
+                    .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+                },
+            );
     }
 
     try buffered_out_stream.flush();
@@ -406,6 +430,7 @@ fn do_test(
         clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
         clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
         clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
+        clap.parseParam("-s, --skip_output              Don't show output from testing the snippet.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -443,7 +468,9 @@ fn do_test(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    if (args.option("--name") != null) {
+        try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    }
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
@@ -466,18 +493,30 @@ fn do_test(
         @panic("Error while deleting the temp directory!");
     };
 
-    const test_outcome = try doctest.runTest(
-        allocator,
-        input_file_bytes,
-        buffered_out_stream.writer(),
-        &env_map,
-        args.option("--zig_exe") orelse "zig",
-        doctest.TestCommand{
-            .name = name,
-            .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
-            .tmp_dir_name = tmp_dir_name,
-        },
-    );
+    const cmd_options = doctest.TestCommand{
+        .name = name,
+        .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+        .tmp_dir_name = tmp_dir_name,
+    };
+
+    const test_outcome = if (args.flag("--skip_output"))
+        try doctest.runTest(
+            allocator,
+            input_file_bytes,
+            std.io.null_writer,
+            &env_map,
+            args.option("--zig_exe") orelse "zig",
+            cmd_options,
+        )
+    else
+        try doctest.runTest(
+            allocator,
+            input_file_bytes,
+            buffered_out_stream.writer(),
+            &env_map,
+            args.option("--zig_exe") orelse "zig",
+            cmd_options,
+        );
 
     try buffered_out_stream.flush();
 }

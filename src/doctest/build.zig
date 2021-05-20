@@ -1,4 +1,3 @@
-const builtin = @import("builtin");
 const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
@@ -14,7 +13,7 @@ pub const BuildCommand = struct {
     format: Format,
     name: ?[]const u8 = null,
     is_inline: bool = false,
-    mode: builtin.Mode = .Debug,
+    mode: std.builtin.Mode = .Debug,
     link_objects: []const []const u8 = &[0][]u8{},
     target_str: ?[]const u8 = null,
     link_libc: bool = false,

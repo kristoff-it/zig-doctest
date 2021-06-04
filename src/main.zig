@@ -221,7 +221,7 @@ fn do_build(
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
-    try env_map.set("ZIG_DEBUG_COLOR", "1");
+    try env_map.put("ZIG_DEBUG_COLOR", "1");
 
     // Create a temp folder
     const tmp_dir_name: []const u8 = while (true) {
@@ -344,7 +344,7 @@ fn do_run(
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
-    try env_map.set("ZIG_DEBUG_COLOR", "1");
+    try env_map.put("ZIG_DEBUG_COLOR", "1");
 
     // Create a temp folder
     const tmp_dir_name = while (true) {
@@ -477,7 +477,7 @@ fn do_test(
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
-    try env_map.set("ZIG_DEBUG_COLOR", "1");
+    try env_map.put("ZIG_DEBUG_COLOR", "1");
 
     // Create a temp folder
     const tmp_dir_name = while (true) {

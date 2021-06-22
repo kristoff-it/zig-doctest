@@ -209,7 +209,7 @@ pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");
             },
-            .invalid, .invalid_ampersands, .invalid_periodasterisks => return parseError(
+            .invalid, .invalid_periodasterisks => return parseError(
                 src,
                 token,
                 "syntax error",

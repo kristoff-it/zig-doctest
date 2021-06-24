@@ -1,7 +1,8 @@
-const std = @import("std");
 const clap = @import("clap");
+const std = @import("std");
 
 const debug = std.debug;
+const io = std.io;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -21,13 +22,15 @@ pub fn main() !void {
     defer iter.deinit();
 
     // Initalize our diagnostics, which can be used for reporting useful errors.
-    // This is optional. You can also just pass `null` to `parser.next` if you
-    // don't care about the extra information `Diagnostics` provides.
-    var diag: clap.Diagnostic = undefined;
-
-    var args = clap.parseEx(clap.Help, &params, allocator, &iter, &diag) catch |err| {
+    // This is optional. You can also pass `.{}` to `clap.parse` if you don't
+    // care about the extra information `Diagnostics` provides.
+    var diag = clap.Diagnostic{};
+    var args = clap.parseEx(clap.Help, &params, &iter, .{
+        .allocator = allocator,
+        .diagnostic = &diag,
+    }) catch |err| {
         // Report useful error and exit
-        diag.report(std.io.getStdErr().outStream(), err) catch {};
+        diag.report(io.getStdErr().writer(), err) catch {};
         return err;
     };
     defer args.deinit();
@@ -35,9 +38,9 @@ pub fn main() !void {
     if (args.flag("--help"))
         debug.warn("--help\n", .{});
     if (args.option("--number")) |n|
-        debug.warn("--number = {}\n", .{n});
+        debug.warn("--number = {s}\n", .{n});
     for (args.options("--string")) |s|
-        debug.warn("--string = {}\n", .{s});
+        debug.warn("--string = {s}\n", .{s});
     for (args.positionals()) |pos|
-        debug.warn("{}\n", .{pos});
+        debug.warn("{s}\n", .{pos});
 }

@@ -54,10 +54,10 @@ pub fn main() !void {
             };
 
             var diag: clap.Diagnostic = undefined;
-            var args = clap.ComptimeClap(
-                clap.Help,
-                &params,
-            ).parse(allocator, &args_it, &diag) catch |err| {
+            var args = clap.parseEx(clap.Help, &params, &args_it, .{
+                .allocator = allocator,
+                .diagnostic = &diag,
+            }) catch |err| {
                 // Report any useful error and exit
                 diag.report(std.io.getStdErr().writer(), err) catch {};
                 return err;
@@ -120,10 +120,10 @@ fn do_syntax(
     };
 
     var diag: clap.Diagnostic = undefined;
-    var args = clap.ComptimeClap(
-        clap.Help,
-        &params,
-    ).parse(allocator, args_it, &diag) catch |err| {
+    var args = clap.parseEx(clap.Help, &params, args_it, .{
+        .allocator = allocator,
+        .diagnostic = &diag,
+    }) catch |err| {
         // Report any useful error and exit
         diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
@@ -178,10 +178,10 @@ fn do_build(
     };
 
     var diag: clap.Diagnostic = undefined;
-    var args = clap.ComptimeClap(
-        clap.Help,
-        &params,
-    ).parse(allocator, args_it, &diag) catch |err| {
+    var args = clap.parseEx(clap.Help, &params, args_it, .{
+        .allocator = allocator,
+        .diagnostic = &diag,
+    }) catch |err| {
         // Report any useful error and exit
         diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
@@ -301,10 +301,10 @@ fn do_run(
     };
 
     var diag: clap.Diagnostic = undefined;
-    var args = clap.ComptimeClap(
-        clap.Help,
-        &params,
-    ).parse(allocator, args_it, &diag) catch |err| {
+    var args = clap.parseEx(clap.Help, &params, args_it, .{
+        .allocator = allocator,
+        .diagnostic = &diag,
+    }) catch |err| {
         // Report any useful error and exit
         diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
@@ -390,7 +390,7 @@ fn do_run(
 
     // Missing executable path means that the build failed.
     if (executable_path) |exe_path| {
-        const run_outcome = if (args.flag("--skip_output"))
+        if (args.flag("--skip_output")) {
             try doctest.runExe(
                 allocator,
                 exe_path,
@@ -399,8 +399,8 @@ fn do_run(
                 doctest.RunCommand{
                     .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
                 },
-            )
-        else
+            );
+        } else {
             try doctest.runExe(
                 allocator,
                 exe_path,
@@ -410,6 +410,7 @@ fn do_run(
                     .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
                 },
             );
+        }
     }
 
     try buffered_out_stream.flush();
@@ -434,10 +435,10 @@ fn do_test(
     };
 
     var diag: clap.Diagnostic = undefined;
-    var args = clap.ComptimeClap(
-        clap.Help,
-        &params,
-    ).parse(allocator, args_it, &diag) catch |err| {
+    var args = clap.parseEx(clap.Help, &params, args_it, .{
+        .allocator = allocator,
+        .diagnostic = &diag,
+    }) catch |err| {
         // Report any useful error and exit
         diag.report(std.io.getStdErr().writer(), err) catch {};
         return err;
@@ -499,7 +500,7 @@ fn do_test(
         .tmp_dir_name = tmp_dir_name,
     };
 
-    const test_outcome = if (args.flag("--skip_output"))
+    if (args.flag("--skip_output")) {
         try doctest.runTest(
             allocator,
             input_file_bytes,
@@ -507,8 +508,8 @@ fn do_test(
             &env_map,
             args.option("--zig_exe") orelse "zig",
             cmd_options,
-        )
-    else
+        );
+    } else {
         try doctest.runTest(
             allocator,
             input_file_bytes,
@@ -517,7 +518,7 @@ fn do_test(
             args.option("--zig_exe") orelse "zig",
             cmd_options,
         );
-
+    }
     try buffered_out_stream.flush();
 }
 

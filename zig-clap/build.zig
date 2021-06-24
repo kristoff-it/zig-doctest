@@ -1,28 +1,20 @@
-const builtin = @import("builtin");
 const std = @import("std");
 
-const Mode = builtin.Mode;
 const Builder = std.build.Builder;
+const Mode = builtin.Mode;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
     const target = b.standardTargetOptions(.{});
 
-    const fmt_step = b.addFmt(&[_][]const u8{
-        "build.zig",
-        "clap.zig",
-        "clap",
-        "example",
-    });
-
     const test_all_step = b.step("test", "Run all tests in all modes.");
-    inline for ([_]Mode{ Mode.Debug, Mode.ReleaseFast, Mode.ReleaseSafe, Mode.ReleaseSmall }) |test_mode| {
-        const mode_str = comptime modeToString(test_mode);
+    inline for (@typeInfo(std.builtin.Mode).Enum.fields) |field| {
+        const test_mode = @field(std.builtin.Mode, field.name);
+        const mode_str = @tagName(test_mode);
 
         const tests = b.addTest("clap.zig");
         tests.setBuildMode(test_mode);
         tests.setTarget(target);
-        tests.setNamePrefix(mode_str ++ " ");
 
         const test_step = b.step("test-" ++ mode_str, "Run all tests in " ++ mode_str ++ ".");
         test_step.dependOn(&tests.step);
@@ -30,7 +22,7 @@ pub fn build(b: *Builder) void {
     }
 
     const example_step = b.step("examples", "Build examples");
-    inline for ([_][]const u8{
+    inline for (.{
         "simple",
         "simple-ex",
         //"simple-error",
@@ -56,17 +48,17 @@ pub fn build(b: *Builder) void {
     all_step.dependOn(example_step);
     all_step.dependOn(readme_step);
 
-    b.default_step.dependOn(&fmt_step.step);
     b.default_step.dependOn(all_step);
 }
 
 fn readMeStep(b: *Builder) *std.build.Step {
     const s = b.allocator.create(std.build.Step) catch unreachable;
-    s.* = std.build.Step.init(.Custom, "ReadMeStep", b.allocator, struct {
+    s.* = std.build.Step.init(.custom, "ReadMeStep", b.allocator, struct {
         fn make(step: *std.build.Step) anyerror!void {
             @setEvalBranchQuota(10000);
+            _ = step;
             const file = try std.fs.cwd().createFile("README.md", .{});
-            const stream = &file.writer();
+            const stream = file.writer();
             try stream.print(@embedFile("example/README.md.template"), .{
                 @embedFile("example/simple.zig"),
                 @embedFile("example/simple-error.zig"),
@@ -77,13 +69,4 @@ fn readMeStep(b: *Builder) *std.build.Step {
         }
     }.make);
     return s;
-}
-
-fn modeToString(mode: Mode) []const u8 {
-    return switch (mode) {
-        Mode.Debug => "debug",
-        Mode.ReleaseFast => "release-fast",
-        Mode.ReleaseSafe => "release-safe",
-        Mode.ReleaseSmall => "release-small",
-    };
 }

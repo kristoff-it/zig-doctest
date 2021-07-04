@@ -3,9 +3,14 @@ const mem = std.mem;
 const print = std.debug.print;
 const render_utils = @import("render_utils.zig");
 
-pub fn highlightZigCode(raw_src: []const u8, out: anytype) !void {
+pub fn highlightZigCode(raw_src: [:0]const u8, allocator: *std.mem.Allocator, out: anytype) !void {
     // TODO: who should be doing this cleanup?
-    const src = mem.trim(u8, raw_src, " \n");
+
+    // We are doing this to preserve the null termination of the string.
+    // It Tokenizer ever stops needing that, we can get rid of this copy!
+    const src = try allocator.dupeZ(u8, mem.trim(u8, raw_src, " \n"));
+    defer allocator.free(src);
+
     try out.writeAll("<pre><code class=\"zig\">");
     var tokenizer = std.zig.Tokenizer.init(src);
     var index: usize = 0;

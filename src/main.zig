@@ -150,7 +150,7 @@ fn do_syntax(
         break :blk try open_output(args.option("--out_file"));
     };
 
-    try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
+    try doctest.highlightZigCode(input_file_bytes, allocator, buffered_out_stream.writer());
     try buffered_out_stream.flush();
 }
 
@@ -217,7 +217,7 @@ fn do_build(
     }
 
     // Produce the syntax highlighting
-    try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
+    try doctest.highlightZigCode(input_file_bytes, allocator, buffered_out_stream.writer());
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
@@ -340,7 +340,7 @@ fn do_run(
     }
 
     // Produce the syntax highlighting
-    try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
+    try doctest.highlightZigCode(input_file_bytes, allocator, buffered_out_stream.writer());
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
@@ -474,7 +474,7 @@ fn do_test(
     }
 
     // Produce the syntax highlighting
-    try doctest.highlightZigCode(input_file_bytes, buffered_out_stream.writer());
+    try doctest.highlightZigCode(input_file_bytes, allocator, buffered_out_stream.writer());
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
@@ -542,14 +542,14 @@ fn open_output(output: ?[]const u8) !BufferedFileType {
     return io.bufferedWriter(out_file.writer());
 }
 
-fn read_input(allocator: *mem.Allocator, input: ?[]const u8) ![]const u8 {
+fn read_input(allocator: *mem.Allocator, input: ?[]const u8) ![:0]const u8 {
     const in_file = if (input) |in_file_name|
         try fs.cwd().openFile(in_file_name, .{ .read = true })
     else
         io.getStdIn();
     defer in_file.close();
 
-    return try in_file.reader().readAllAlloc(allocator, max_doc_file_size);
+    return try in_file.readToEndAllocOptions(allocator, max_doc_file_size, null, 1, 0);
 }
 
 // TODO: this way of chopping of the file extension seems kinda dumb.

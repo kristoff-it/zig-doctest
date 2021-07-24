@@ -22,7 +22,7 @@ pub const BuildCommand = struct {
     expected_outcome: union(enum) { SilentSuccess, Success, Failure: []const u8 } = .Success,
     max_doc_file_size: usize = 1024 * 1024 * 1, // 1MB TODO: change?
 
-    pub const obj_ext = (std.zig.CrossTarget{}).oFileExt();
+    pub const obj_ext = (std.zig.CrossTarget{}).dynamicLibSuffix();
     pub const Format = enum { exe, obj, lib };
 };
 

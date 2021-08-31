@@ -84,16 +84,6 @@ pub fn highlightZigCode(raw_src: [:0]const u8, allocator: *std.mem.Allocator, ou
                 next_tok_is_fn = true;
             },
 
-            .keyword_undefined,
-            .keyword_null,
-            .keyword_true,
-            .keyword_false,
-            => {
-                try out.writeAll("<span class=\"tok tok-null\">");
-                try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
-                try out.writeAll("</span>");
-            },
-
             .string_literal,
             .multiline_string_literal_line,
             .char_literal,

@@ -53,7 +53,7 @@ test "term color" {
     const input_bytes = "A\x1b[32;1mgreen\x1b[0mB";
     const result = try termColor(std.testing.allocator, input_bytes);
     defer std.testing.allocator.free(result);
-    testing.expectEqualSlices(u8, "A<span class=\"t32\">green</span>B", result);
+    std.testing.expectEqualSlices(u8, "A<span class=\"t32\">green</span>B", result);
 }
 
 pub fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {

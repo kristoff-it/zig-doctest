@@ -24,6 +24,7 @@ pub fn highlightZigCode(raw_src: [:0]const u8, allocator: *std.mem.Allocator, ou
         switch (token.tag) {
             .eof => break,
 
+            .keyword_addrspace,
             .keyword_align,
             .keyword_and,
             .keyword_asm,

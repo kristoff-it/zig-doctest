@@ -200,6 +200,14 @@ pub fn highlightZigCode(raw_src: [:0]const u8, allocator: *std.mem.Allocator, ou
             .angle_bracket_angle_bracket_right,
             .angle_bracket_angle_bracket_right_equal,
             .tilde,
+            .plus_pipe,
+            .plus_pipe_equal,
+            .minus_pipe,
+            .minus_pipe_equal,
+            .asterisk_pipe,
+            .asterisk_pipe_equal,
+            .angle_bracket_angle_bracket_left_pipe,
+            .angle_bracket_angle_bracket_left_pipe_equal,
             => {
                 try out.writeAll("<span class=\"tok tok-symbol\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);

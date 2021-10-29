@@ -568,7 +568,7 @@ fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const 
     var xoro = std.rand.Xoroshiro128.init(seed);
 
     var buf: [4]u8 = undefined;
-    xoro.random.bytes(&buf);
+    xoro.random().bytes(&buf);
 
     var name = try allocator.alloc(u8, prefix.len + 8);
     errdefer allocator.free(name);

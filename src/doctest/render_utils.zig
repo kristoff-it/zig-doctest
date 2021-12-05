@@ -10,7 +10,7 @@ pub fn dumpArgs(args: []const []const u8) void {
         print("\n", .{});
 }
 
-pub fn escapeHtml(allocator: *mem.Allocator, input: []const u8) ![]u8 {
+pub fn escapeHtml(allocator: mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
@@ -56,7 +56,7 @@ test "term color" {
     std.testing.expectEqualSlices(u8, "A<span class=\"t32\">green</span>B", result);
 }
 
-pub fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {
+pub fn termColor(allocator: mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
@@ -136,7 +136,7 @@ pub fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {
 }
 
 pub fn exec(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     env_map: *std.BufMap,
     max_size: usize,
     args: []const []const u8,

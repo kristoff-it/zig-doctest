@@ -23,7 +23,7 @@ pub const TestCommand = struct {
 };
 
 pub fn runTest(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     input_bytes: []const u8,
     out: anytype,
     env_map: *std.BufMap,

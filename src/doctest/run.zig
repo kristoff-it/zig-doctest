@@ -14,7 +14,7 @@ pub const RunCommand = struct {
 };
 
 pub fn runExe(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     path_to_exe: []const u8,
     out: anytype,
     env_map: *std.BufMap,

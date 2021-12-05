@@ -34,7 +34,7 @@ fn dumpArgs(args: []const []const u8) void {
 }
 
 pub fn runBuild(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     input_bytes: []const u8,
     out: anytype,
     env_map: *std.BufMap,

@@ -35,7 +35,7 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    const allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     var args_it = try clap.args.OsIterator.init(allocator);
     defer args_it.deinit();
@@ -106,7 +106,7 @@ pub fn main() !void {
 }
 
 fn do_syntax(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     args_it: anytype,
     comptime is_inline: bool,
     cl_input_file_bytes: anytype,
@@ -155,7 +155,7 @@ fn do_syntax(
 }
 
 fn do_build(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     args_it: anytype,
     comptime is_inline: bool,
     cl_input_file_bytes: anytype,
@@ -280,7 +280,7 @@ fn do_build(
 }
 
 fn do_run(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     args_it: anytype,
     comptime is_inline: bool,
     cl_input_file_bytes: anytype,
@@ -417,7 +417,7 @@ fn do_run(
 }
 
 fn do_test(
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     args_it: anytype,
     comptime is_inline: bool,
     cl_input_file_bytes: anytype,
@@ -542,7 +542,7 @@ fn open_output(output: ?[]const u8) !BufferedFileType {
     return io.bufferedWriter(out_file.writer());
 }
 
-fn read_input(allocator: *mem.Allocator, input: ?[]const u8) ![:0]const u8 {
+fn read_input(allocator: mem.Allocator, input: ?[]const u8) ![:0]const u8 {
     const in_file = if (input) |in_file_name|
         try fs.cwd().openFile(in_file_name, .{ .read = true })
     else
@@ -563,7 +563,7 @@ fn choose_test_name(in_file: ?[]const u8) ?[]const u8 {
     return name_with_ext;
 }
 
-fn randomized_path_name(allocator: *mem.Allocator, prefix: []const u8) ![]const u8 {
+fn randomized_path_name(allocator: mem.Allocator, prefix: []const u8) ![]const u8 {
     const seed = @bitCast(u64, @truncate(i64, std.time.nanoTimestamp()));
     var xoro = std.rand.Xoroshiro128.init(seed);
 

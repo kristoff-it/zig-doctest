@@ -89,7 +89,7 @@ const Action = enum {
     Close,
 };
 
-fn urlize(allocator: *mem.Allocator, input: []const u8) ![]u8 {
+fn urlize(allocator: mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
@@ -108,7 +108,7 @@ fn urlize(allocator: *mem.Allocator, input: []const u8) ![]u8 {
     return buf.toOwnedSlice();
 }
 
-fn escapeHtml(allocator: *mem.Allocator, input: []const u8) ![]u8 {
+fn escapeHtml(allocator: mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
@@ -154,7 +154,7 @@ test "term color" {
     testing.expectEqualSlices(u8, "A<span class=\"t32\">green</span>B", result);
 }
 
-fn termColor(allocator: *mem.Allocator, input: []const u8) ![]u8 {
+fn termColor(allocator: mem.Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
@@ -278,7 +278,7 @@ fn getTokenLocation(src: []const u8, token: std.zig.Token) Location {
     return loc;
 }
 
-fn genHtml(allocator: *mem.Allocator, tokenizer: *Tokenizer, toc: *Toc, out: anytype, zig_exe: []const u8) !void {
+fn genHtml(allocator: mem.Allocator, tokenizer: *Tokenizer, toc: *Toc, out: anytype, zig_exe: []const u8) !void {
     var code_progress_index: usize = 0;
 
     var env_map = try process.getEnvMap(allocator);
@@ -693,7 +693,7 @@ fn genHtml(allocator: *mem.Allocator, tokenizer: *Tokenizer, toc: *Toc, out: any
     }
 }
 
-fn exec(allocator: *mem.Allocator, env_map: *std.BufMap, args: []const []const u8) !ChildProcess.ExecResult {
+fn exec(allocator: mem.Allocator, env_map: *std.BufMap, args: []const []const u8) !ChildProcess.ExecResult {
     const result = try ChildProcess.exec(.{
         .allocator = allocator,
         .argv = args,
@@ -717,7 +717,7 @@ fn exec(allocator: *mem.Allocator, env_map: *std.BufMap, args: []const []const u
     return result;
 }
 
-fn getBuiltinCode(allocator: *mem.Allocator, env_map: *std.BufMap, zig_exe: []const u8) ![]const u8 {
+fn getBuiltinCode(allocator: mem.Allocator, env_map: *std.BufMap, zig_exe: []const u8) ![]const u8 {
     const result = try exec(allocator, env_map, &[_][]const u8{ zig_exe, "build-obj", "--show-builtin" });
     return result.stdout;
 }

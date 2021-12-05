@@ -3,7 +3,7 @@ const mem = std.mem;
 const print = std.debug.print;
 const render_utils = @import("render_utils.zig");
 
-pub fn highlightZigCode(raw_src: [:0]const u8, allocator: *std.mem.Allocator, out: anytype) !void {
+pub fn highlightZigCode(raw_src: [:0]const u8, allocator: std.mem.Allocator, out: anytype) !void {
     // TODO: who should be doing this cleanup?
 
     // We are doing this to preserve the null termination of the string.

@@ -544,7 +544,7 @@ fn open_output(output: ?[]const u8) !BufferedFileType {
 
 fn read_input(allocator: mem.Allocator, input: ?[]const u8) ![:0]const u8 {
     const in_file = if (input) |in_file_name|
-        try fs.cwd().openFile(in_file_name, .{ .read = true })
+        try fs.cwd().openFile(in_file_name, .{ .mode = .read_only })
     else
         io.getStdIn();
     defer in_file.close();

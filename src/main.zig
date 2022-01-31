@@ -37,10 +37,12 @@ pub fn main() !void {
 
     const allocator = arena.allocator();
 
-    var args_it = try clap.args.OsIterator.init(allocator);
+    var args_it = try std.process.ArgIterator.initWithAllocator(allocator);
     defer args_it.deinit();
 
-    const command_name = (try args_it.next()) orelse show_main_help();
+    _ = args_it.skip(); // skip exe name
+
+    const command_name = args_it.next() orelse show_main_help();
 
     @setEvalBranchQuota(10000);
     const command = std.meta.stringToEnum(CommandLineCommand, command_name) orelse @panic("unknown command");
@@ -79,14 +81,15 @@ pub fn main() !void {
                 @panic("the script is empty!");
             };
 
-            var iterator = clap.args.ShellIterator.init(
+            const InlineArgIterator = std.process.ArgIteratorGeneral(.{});
+            var iterator = try InlineArgIterator.init(
                 std.heap.page_allocator,
                 input_file_bytes[prefix.len..first_newline],
             );
 
             const code_without_args_comment = input_file_bytes[first_newline + 1 ..];
             // Read the real command string from the file
-            const real_command_name = (try iterator.next()) orelse @panic("expected command arg in zig-doctest comment line");
+            const real_command_name = iterator.next() orelse @panic("expected command arg in zig-doctest comment line");
             const real_command = std.meta.stringToEnum(CommandLineCommand, real_command_name) orelse @panic("unknown command in comment line");
             switch (real_command) {
                 .@"inline" => @panic("`inline` can only be used as an actual command line argument"),

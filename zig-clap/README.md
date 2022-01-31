@@ -2,10 +2,6 @@
 
 A simple and easy to use command line argument parser library for Zig.
 
-Looking for a version that works with `zig master`? The `zig-master` branch has
-you covered. It is maintained by people who live at head (not me) and is merged
-into master on every `zig` release.
-
 ## Features
 
 * Short arguments `-a`
@@ -53,13 +49,13 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help"))
-        debug.warn("--help\n", .{});
+        debug.print("--help\n", .{});
     if (args.option("--number")) |n|
-        debug.warn("--number = {s}\n", .{n});
+        debug.print("--number = {s}\n", .{n});
     for (args.options("--string")) |s|
-        debug.warn("--string = {s}\n", .{s});
+        debug.print("--string = {s}\n", .{s});
     for (args.positionals()) |pos|
-        debug.warn("{s}\n", .{pos});
+        debug.print("{s}\n", .{pos});
 }
 
 ```
@@ -112,6 +108,7 @@ const std = @import("std");
 
 const debug = std.debug;
 const io = std.io;
+const process = std.process;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -130,16 +127,17 @@ pub fn main() !void {
         .{ .id = 'f', .takes_value = .one },
     };
 
-    // We then initialize an argument iterator. We will use the OsIterator as it nicely
-    // wraps iterating over arguments the most efficient way on each os.
-    var iter = try clap.args.OsIterator.init(allocator);
+    var iter = try process.ArgIterator.initWithAllocator(allocator);
     defer iter.deinit();
+
+    // Skip exe argument
+    _ = iter.next();
 
     // Initalize our diagnostics, which can be used for reporting useful errors.
     // This is optional. You can also leave the `diagnostic` field unset if you
     // don't care about the extra information `Diagnostic` provides.
     var diag = clap.Diagnostic{};
-    var parser = clap.StreamingClap(u8, clap.args.OsIterator){
+    var parser = clap.StreamingClap(u8, process.ArgIterator){
         .params = &params,
         .iter = &iter,
         .diagnostic = &diag,
@@ -153,13 +151,13 @@ pub fn main() !void {
     }) |arg| {
         // arg.param will point to the parameter which matched the argument.
         switch (arg.param.id) {
-            'h' => debug.warn("Help!\n", .{}),
-            'n' => debug.warn("--number = {s}\n", .{arg.value.?}),
+            'h' => debug.print("Help!\n", .{}),
+            'n' => debug.print("--number = {s}\n", .{arg.value.?}),
 
             // arg.value == null, if arg.param.takes_value == .none.
             // Otherwise, arg.value is the value passed with the argument, such as "-a=10"
             // or "-a 10".
-            'f' => debug.warn("{s}\n", .{arg.value.?}),
+            'f' => debug.print("{s}\n", .{arg.value.?}),
             else => unreachable,
         }
     }
@@ -180,21 +178,25 @@ const clap = @import("clap");
 const std = @import("std");
 
 pub fn main() !void {
+    const params = comptime [_]clap.Param(clap.Help){
+        clap.parseParam("-h, --help     Display this help and exit.         ") catch unreachable,
+        clap.parseParam("-v, --version  Output version information and exit.") catch unreachable,
+    };
+
+    var args = try clap.parse(clap.Help, &params, .{});
+    defer args.deinit();
+
     // clap.help is a function that can print a simple help message, given a
     // slice of Param(Help). There is also a helpEx, which can print a
     // help message for any Param, but it is more verbose to call.
-    try clap.help(
-        std.io.getStdErr().writer(),
-        comptime &.{
-            clap.parseParam("-h, --help     Display this help and exit.         ") catch unreachable,
-            clap.parseParam("-v, --version  Output version information and exit.") catch unreachable,
-        },
-    );
+    if (args.flag("--help"))
+        return clap.help(std.io.getStdErr().writer(), &params);
 }
 
 ```
 
 ```
+$ zig-out/bin/help --help
 	-h, --help   	Display this help and exit.
 	-v, --version	Output version information and exit.
 ```
@@ -218,22 +220,26 @@ const clap = @import("clap");
 const std = @import("std");
 
 pub fn main() !void {
+    const params = comptime [_]clap.Param(clap.Help){
+        clap.parseParam("-h, --help       Display this help and exit.              ") catch unreachable,
+        clap.parseParam("-v, --version    Output version information and exit.     ") catch unreachable,
+        clap.parseParam("    --value <N>  An option parameter, which takes a value.") catch unreachable,
+    };
+
+    var args = try clap.parse(clap.Help, &params, .{});
+    defer args.deinit();
+
     // clap.usage is a function that can print a simple usage message, given a
     // slice of Param(Help). There is also a usageEx, which can print a
     // usage message for any Param, but it is more verbose to call.
-    try clap.usage(
-        std.io.getStdErr().writer(),
-        comptime &.{
-            clap.parseParam("-h, --help       Display this help and exit.         ") catch unreachable,
-            clap.parseParam("-v, --version    Output version information and exit.") catch unreachable,
-            clap.parseParam("    --value <N>  Output version information and exit.") catch unreachable,
-        },
-    );
+    if (args.flag("--help"))
+        return clap.usage(std.io.getStdErr().writer(), &params);
 }
 
 ```
 
 ```
+$ zig-out/bin/usage --help
 [-hv] [--value <N>]
 ```
 

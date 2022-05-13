@@ -137,7 +137,7 @@ pub fn termColor(allocator: mem.Allocator, input: []const u8) ![]u8 {
 
 pub fn exec(
     allocator: mem.Allocator,
-    env_map: *std.BufMap,
+    env_map: *std.process.EnvMap,
     max_size: usize,
     args: []const []const u8,
 ) !ChildProcess.ExecResult {

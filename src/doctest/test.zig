@@ -26,7 +26,7 @@ pub fn runTest(
     allocator: mem.Allocator,
     input_bytes: []const u8,
     out: anytype,
-    env_map: *std.BufMap,
+    env_map: *std.process.EnvMap,
     zig_exe: []const u8,
     cmd: TestCommand,
 ) !void {

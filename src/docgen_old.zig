@@ -693,7 +693,7 @@ fn genHtml(allocator: mem.Allocator, tokenizer: *Tokenizer, toc: *Toc, out: anyt
     }
 }
 
-fn exec(allocator: mem.Allocator, env_map: *std.BufMap, args: []const []const u8) !ChildProcess.ExecResult {
+fn exec(allocator: mem.Allocator, env_map: *std.process.EnvMap, args: []const []const u8) !ChildProcess.ExecResult {
     const result = try ChildProcess.exec(.{
         .allocator = allocator,
         .argv = args,
@@ -717,7 +717,7 @@ fn exec(allocator: mem.Allocator, env_map: *std.BufMap, args: []const []const u8
     return result;
 }
 
-fn getBuiltinCode(allocator: mem.Allocator, env_map: *std.BufMap, zig_exe: []const u8) ![]const u8 {
+fn getBuiltinCode(allocator: mem.Allocator, env_map: *std.process.EnvMap, zig_exe: []const u8) ![]const u8 {
     const result = try exec(allocator, env_map, &[_][]const u8{ zig_exe, "build-obj", "--show-builtin" });
     return result.stdout;
 }

@@ -17,7 +17,7 @@ pub fn runExe(
     allocator: mem.Allocator,
     path_to_exe: []const u8,
     out: anytype,
-    env_map: *std.BufMap,
+    env_map: *std.process.EnvMap,
     cmd: RunCommand,
 ) !void {
     const run_args = &[_][]const u8{path_to_exe};

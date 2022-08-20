@@ -54,8 +54,13 @@ pub const Values = enum {
 ///     * Positional parameters have both names.long and names.short == null.
 ///     * Positional parameters must take a value.
 pub fn Param(comptime Id: type) type {
+    const init = switch (@typeInfo(Id)) {
+        .Struct => Id{},
+        .Int => 0,
+        else => @compileError("unknown init"),
+    };
     return struct {
-        id: Id = Id{},
+        id: Id = init,
         names: Names = Names{},
         takes_value: Values = .none,
     };
@@ -99,7 +104,7 @@ pub fn parseParam(line: []const u8) !Param(Help) {
         break :blk short_name;
     } else null;
 
-    const long_name = if (mem.startsWith(u8, param_str, "--")) blk: {
+    const long_name: ?[]const u8 = if (mem.startsWith(u8, param_str, "--")) blk: {
         if (param_str[param_str.len - 1] == ',')
             return error.TrailingComma;
 

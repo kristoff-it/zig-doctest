@@ -482,11 +482,11 @@ pub fn helpEx(
         helpText: fn (Param(Id)) []const u8,
         valueText: fn (Param(Id)) []const u8,
 
-        pub fn help(c: @This(), p: Param(Id)) error{}![]const u8 {
+        pub fn help(comptime c: @This(), p: Param(Id)) error{}![]const u8 {
             return c.helpText(p);
         }
 
-        pub fn value(c: @This(), p: Param(Id)) error{}![]const u8 {
+        pub fn value(comptime c: @This(), p: Param(Id)) error{}![]const u8 {
             return c.valueText(p);
         }
     };

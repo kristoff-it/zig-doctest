@@ -138,9 +138,7 @@ pub fn highlightZigCode(raw_src: [:0]const u8, allocator: std.mem.Allocator, out
                 }
             },
 
-            .integer_literal,
-            .float_literal,
-            => {
+            .number_literal => {
                 try out.writeAll("<span class=\"tok tok-number\">");
                 try render_utils.writeEscaped(out, src[token.loc.start..token.loc.end]);
                 try out.writeAll("</span>");

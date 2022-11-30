@@ -90,7 +90,7 @@ pub fn ComptimeClap(
 
             for (multis) |*multi, i|
                 res.multi_options[i] = multi.toOwnedSlice();
-            res.pos = pos.toOwnedSlice();
+            res.pos = try pos.toOwnedSlice();
 
             return res;
         }

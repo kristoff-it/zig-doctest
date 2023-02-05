@@ -18,7 +18,7 @@ pub fn build(b: *Builder) void {
         .optimize = optimize,
     });
 
-    exe.addPackagePath("clap", "zig-clap/clap.zig");
+    exe.addAnonymousModule("clap", .{ .source_file = .{ .path = "zig-clap/clap.zig" } });
     exe.install();
 
     const run_cmd = exe.run();

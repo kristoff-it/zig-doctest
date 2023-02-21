@@ -75,7 +75,7 @@ pub fn main() !void {
                 @panic("the input file doesn't begin with `// zig-doctest: `");
             }
 
-            const first_newline = for (input_file_bytes) |c, idx| {
+            const first_newline = for (input_file_bytes, 0..) |c, idx| {
                 if (c == '\n') break idx;
             } else {
                 @panic("the script is empty!");

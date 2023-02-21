@@ -60,13 +60,12 @@ pub fn termColor(allocator: mem.Allocator, dirty_input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
-    
-    // Assume that usage of [0K is meant to remove a dirty 
+    // Assume that usage of [0K is meant to remove a dirty
     // prefix from the input.
     const zero_k = "\x1b[0K";
-    const prefix = if (std.mem.lastIndexOf(u8, dirty_input, zero_k)) |p| p + zero_k.len else 0;  
+    const prefix = if (std.mem.lastIndexOf(u8, dirty_input, zero_k)) |p| p + zero_k.len else 0;
     const input = dirty_input[prefix..];
-    
+
     var out = buf.writer();
     var number_start_index: usize = undefined;
     var first_number: usize = undefined;
@@ -74,7 +73,7 @@ pub fn termColor(allocator: mem.Allocator, dirty_input: []const u8) ![]u8 {
     var i: usize = 0;
     var state = TermState.Start;
     var open_span_count: usize = 0;
-    
+
     while (i < input.len) : (i += 1) {
         const c = input[i];
         switch (state) {

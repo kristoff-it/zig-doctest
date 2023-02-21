@@ -279,7 +279,7 @@ fn getTokenLocation(src: []const u8, token: std.zig.Token) Location {
         .line_start = 0,
         .line_end = 0,
     };
-    for (src) |c, i| {
+    for (src, 0..) |c, i| {
         if (i == token.loc.start) {
             loc.line_end = i;
             while (loc.line_end < src.len and src[loc.line_end] != '\n') : (loc.line_end += 1) {}

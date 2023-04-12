@@ -62,10 +62,10 @@ pub fn runBuild(
         try fs.cwd().writeFile(tmp_source_file_name, input_bytes);
 
         try build_args.appendSlice(&[_][]const u8{
-            zig_exe,          zig_command,
-            "--name",         name,
-            "--color",        "on",
-            "--enable-cache", tmp_source_file_name,
+            zig_exe,              zig_command,
+            "--name",             name,
+            "--color",            "on",
+            tmp_source_file_name,
         });
     }
 

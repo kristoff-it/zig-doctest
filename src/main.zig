@@ -120,6 +120,7 @@ fn do_syntax(
         clap.parseParam("-h, --help             Display this help message") catch unreachable,
         clap.parseParam("-i, --in_file <PATH>   path to the input file, defaults to stdin") catch unreachable,
         clap.parseParam("-o, --out_file <PATH>  path to the output file, defaults to stdout") catch unreachable,
+        clap.parseParam("-k, --skip-name        Don't show the file name as a link before the code.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -178,6 +179,7 @@ fn do_build(
         clap.parseParam("-t, --target <TARGET>          Compilation target, expected as a arch-os-abi tripled (e.g. `x86_64-linux-gnu`) defaults to `native`") catch unreachable,
         clap.parseParam("-k, --keep                     Don't delete the temp folder, useful for debugging the resulting executable.") catch unreachable,
         clap.parseParam("-s, --skip_output              Don't show output from building the snippet.") catch unreachable,
+        clap.parseParam("-k, --skip-name                Don't show the file name as a link before the code.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -215,7 +217,7 @@ fn do_build(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    if (args.option("--name") != null) {
+    if (args.option("--name") != null and !args.flag("--skip-name")) {
         try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
     }
 
@@ -301,6 +303,7 @@ fn do_run(
         clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
         clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
         clap.parseParam("-s, --skip_output              Don't show output from running the snippet.") catch unreachable,
+        clap.parseParam("-k, --skip-name                Don't show the file name as a link before the code.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -338,7 +341,7 @@ fn do_run(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    if (args.option("--name") != null) {
+    if (args.option("--name") != null and !args.flag("--skip-name")) {
         try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
     }
 
@@ -435,6 +438,7 @@ fn do_test(
         clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
         clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
         clap.parseParam("-s, --skip_output              Don't show output from testing the snippet.") catch unreachable,
+        clap.parseParam("-k, --skip-name                Don't show the file name as a link before the code.") catch unreachable,
     };
 
     var diag: clap.Diagnostic = undefined;
@@ -472,7 +476,7 @@ fn do_test(
     const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
 
     // Print the filename element
-    if (args.option("--name") != null) {
+    if (args.option("--name") != null and !args.flag("--skip-name")) {
         try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
     }
 

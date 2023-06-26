@@ -405,7 +405,7 @@ pub fn helpFull(
             var cs = io.countingWriter(io.null_writer);
             try printParam(cs.writer(), Id, param, Error, context, valueText);
             if (res < cs.bytes_written)
-                res = @intCast(usize, cs.bytes_written);
+                res = @intCast(cs.bytes_written);
         }
 
         break :blk res;
@@ -418,7 +418,8 @@ pub fn helpFull(
         var cs = io.countingWriter(stream);
         try stream.writeAll("\t");
         try printParam(cs.writer(), Id, param, Error, context, valueText);
-        try stream.writeByteNTimes(' ', max_spacing - @intCast(usize, cs.bytes_written));
+        const bw: usize = @intCast(cs.bytes_written);
+        try stream.writeByteNTimes(' ', max_spacing - bw);
 
         const help_text = try helpText(context, param);
         var help_text_line_it = mem.split(u8, help_text, "\n");
@@ -594,10 +595,8 @@ pub fn usageFull(
 
         const prefix = if (param.names.short) |_| "-" else "--";
 
-        const name = if (param.names.short) |*s|
-            // Seems the zig compiler is being a little wierd. I doesn't allow me to write
-            // @as(*const [1]u8, s)
-            @ptrCast([*]const u8, s)[0..1]
+        const name: []const u8 = if (param.names.short) |*s|
+            @as(*const [1]u8, s)
         else
             param.names.long orelse {
                 positional = param;

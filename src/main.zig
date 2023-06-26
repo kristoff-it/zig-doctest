@@ -569,7 +569,7 @@ fn choose_test_name(in_file: ?[]const u8) []const u8 {
 }
 
 fn randomized_path_name(allocator: mem.Allocator, prefix: []const u8) ![]const u8 {
-    const seed = @bitCast(u64, @truncate(i64, std.time.nanoTimestamp()));
+    const seed: u64 = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
     var xoro = std.rand.Xoroshiro128.init(seed);
 
     var buf: [4]u8 = undefined;

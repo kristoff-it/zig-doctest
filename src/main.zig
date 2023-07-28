@@ -231,7 +231,7 @@ fn do_build(
     // Create a temp folder
     const tmp_dir_name: []const u8 = while (true) {
         const tmp_dir_name = try randomized_path_name(allocator, "doctest-");
-        fs.cwd().makePath(tmp_dir_name) catch |err| switch (err) {
+        fs.cwd().makeDir(tmp_dir_name) catch |err| switch (err) {
             error.PathAlreadyExists => continue,
             else => |e| return e,
         };
@@ -355,7 +355,7 @@ fn do_run(
     // Create a temp folder
     const tmp_dir_name = while (true) {
         const tmp_dir_name = try randomized_path_name(allocator, "doctest-");
-        fs.cwd().makePath(tmp_dir_name) catch |err| switch (err) {
+        fs.cwd().makeDir(tmp_dir_name) catch |err| switch (err) {
             error.PathAlreadyExists => continue,
             else => |e| return e,
         };
@@ -490,7 +490,7 @@ fn do_test(
     // Create a temp folder
     const tmp_dir_name = while (true) {
         const tmp_dir_name = try randomized_path_name(allocator, "doctest-");
-        fs.cwd().makePath(tmp_dir_name) catch |err| switch (err) {
+        fs.cwd().makeDir(tmp_dir_name) catch |err| switch (err) {
             error.PathAlreadyExists => continue,
             else => |e| return e,
         };

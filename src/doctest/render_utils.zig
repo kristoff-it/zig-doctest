@@ -150,8 +150,8 @@ pub fn exec(
     env_map: *std.process.EnvMap,
     max_size: usize,
     args: []const []const u8,
-) !ChildProcess.ExecResult {
-    const result = try ChildProcess.exec(.{
+) !ChildProcess.RunResult {
+    const result = try ChildProcess.run(.{
         .allocator = allocator,
         .argv = args,
         .env_map = env_map,

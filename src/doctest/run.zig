@@ -24,7 +24,7 @@ pub fn runExe(
     var exited_with_signal = false;
 
     const result = if (cmd.expected_outcome == .Failure) ko: {
-        const result = try ChildProcess.exec(.{
+        const result = try ChildProcess.run(.{
             .allocator = allocator,
             .argv = run_args,
             .env_map = env_map,

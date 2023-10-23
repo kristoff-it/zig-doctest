@@ -130,7 +130,7 @@ pub fn runBuild(
     });
 
     // Build the script
-    const result = try ChildProcess.exec(.{
+    const result = try ChildProcess.run(.{
         .allocator = allocator,
         .argv = build_args.items,
         .env_map = env_map,

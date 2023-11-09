@@ -2,6 +2,7 @@ const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
 const ChildProcess = std.ChildProcess;
+const Allocator = std.mem.Allocator;
 
 pub fn dumpArgs(args: []const []const u8) void {
     for (args) |arg|
@@ -10,7 +11,7 @@ pub fn dumpArgs(args: []const []const u8) void {
         print("\n", .{});
 }
 
-pub fn escapeHtml(allocator: mem.Allocator, input: []const u8) ![]u8 {
+pub fn escapeHtml(allocator: Allocator, input: []const u8) ![]u8 {
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
@@ -56,97 +57,158 @@ test "term color" {
     std.testing.expectEqualSlices(u8, "A<span class=\"t32\">green</span>B", result);
 }
 
-pub fn termColor(allocator: mem.Allocator, dirty_input: []const u8) ![]u8 {
+pub fn termColor(allocator: Allocator, input: []const u8) ![]u8 {
+    // The SRG sequences generates by the Zig compiler are in the format:
+    //   ESC [ <foreground-color> ; <n> m
+    // or
+    //   ESC [ <n> m
+    //
+    // where
+    //   foreground-color is 31 (red), 32 (green), 36 (cyan)
+    //   n is 0 (reset), 1 (bold), 2 (dim)
+    //
+    //   Note that 37 (white) is currently not used by the compiler.
+    //
+    // See std.debug.TTY.Color.
+    const supported_sgr_colors = [_]u8{ 31, 32, 36 };
+    const supported_sgr_numbers = [_]u8{ 0, 1, 2 };
+
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
 
-    // Assume that usage of [0K is meant to remove a dirty
-    // prefix from the input.
-    const zero_k = "\x1b[0K";
-    const prefix = if (std.mem.lastIndexOf(u8, dirty_input, zero_k)) |p| p + zero_k.len else 0;
-    const input = dirty_input[prefix..];
-
     var out = buf.writer();
-    var number_start_index: usize = undefined;
-    var first_number: usize = undefined;
-    var second_number: usize = undefined;
+    var sgr_param_start_index: usize = undefined;
+    var sgr_num: u8 = undefined;
+    var sgr_color: u8 = undefined;
     var i: usize = 0;
-    var state = TermState.Start;
+    var state: enum {
+        start,
+        escape,
+        lbracket,
+        number,
+        after_number,
+        arg,
+        arg_number,
+        expect_end,
+    } = .start;
+    var last_new_line: usize = 0;
     var open_span_count: usize = 0;
-
     while (i < input.len) : (i += 1) {
         const c = input[i];
         switch (state) {
-            TermState.Start => switch (c) {
-                '\x1b' => state = TermState.Escape,
+            .start => switch (c) {
+                '\x1b' => {
+                    if (mem.startsWith(u8, input[i..], "\x1B\x28\x30\x6d\x71")) {
+                        try buf.appendSlice("└");
+                        i += 5 - 1;
+                    } else if (mem.startsWith(u8, input[i..], "\x1B\x28\x42")) {
+                        try buf.appendSlice("─");
+                        i += 3 - 1;
+                    } else if (mem.startsWith(u8, input[i..], "\x1B\x28\x30\x74\x71")) {
+                        try buf.appendSlice("├");
+                        i += 5 - 1;
+                    } else if (mem.startsWith(u8, input[i..], "\x1B\x28\x30\x78")) {
+                        try buf.appendSlice("│");
+                        i += 4 - 1;
+                    } else {
+                        state = .escape;
+                    }
+                },
+                '\n' => {
+                    try out.writeByte(c);
+                    last_new_line = buf.items.len;
+                },
                 else => try out.writeByte(c),
             },
-            TermState.Escape => switch (c) {
-                '[' => state = TermState.LBracket,
+            .escape => switch (c) {
+                '[' => state = .lbracket,
                 else => return error.UnsupportedEscape,
             },
-            TermState.LBracket => switch (c) {
+            .lbracket => switch (c) {
                 '0'...'9' => {
-                    number_start_index = i;
-                    state = TermState.Number;
+                    sgr_param_start_index = i;
+                    state = .number;
                 },
                 else => return error.UnsupportedEscape,
             },
-            TermState.Number => switch (c) {
+            .number => switch (c) {
                 '0'...'9' => {},
                 else => {
-                    first_number = std.fmt.parseInt(usize, input[number_start_index..i], 10) catch unreachable;
-                    second_number = 0;
-                    state = TermState.AfterNumber;
+                    sgr_num = try std.fmt.parseInt(u8, input[sgr_param_start_index..i], 10);
+                    sgr_color = 0;
+                    state = .after_number;
                     i -= 1;
                 },
             },
+            .after_number => switch (c) {
+                ';' => state = .arg,
+                'D' => state = .start,
+                'K' => {
+                    buf.items.len = last_new_line;
+                    state = .start;
+                },
+                else => {
+                    state = .expect_end;
+                    i -= 1;
+                },
+            },
+            .arg => switch (c) {
+                '0'...'9' => {
+                    sgr_param_start_index = i;
+                    state = .arg_number;
+                },
+                else => return error.UnsupportedEscape,
+            },
+            .arg_number => switch (c) {
+                '0'...'9' => {},
+                else => {
+                    // Keep the sequence consistent, foreground color first.
+                    // 32;1m is equivalent to 1;32m, but the latter will
+                    // generate an incorrect HTML class without notice.
+                    sgr_color = sgr_num;
+                    if (!in(&supported_sgr_colors, sgr_color)) return error.UnsupportedForegroundColor;
 
-            TermState.AfterNumber => switch (c) {
-                ';' => state = TermState.Arg,
-                else => {
-                    state = TermState.ExpectEnd;
+                    sgr_num = try std.fmt.parseInt(u8, input[sgr_param_start_index..i], 10);
+                    if (!in(&supported_sgr_numbers, sgr_num)) return error.UnsupportedNumber;
+
+                    state = .expect_end;
                     i -= 1;
                 },
             },
-            TermState.Arg => switch (c) {
-                '0'...'9' => {
-                    number_start_index = i;
-                    state = TermState.ArgNumber;
-                },
-                else => return error.UnsupportedEscape,
-            },
-            TermState.ArgNumber => switch (c) {
-                '0'...'9' => {},
-                else => {
-                    second_number = std.fmt.parseInt(usize, input[number_start_index..i], 10) catch unreachable;
-                    state = TermState.ExpectEnd;
-                    i -= 1;
-                },
-            },
-            TermState.ExpectEnd => switch (c) {
+            .expect_end => switch (c) {
                 'm' => {
-                    state = TermState.Start;
+                    state = .start;
                     while (open_span_count != 0) : (open_span_count -= 1) {
                         try out.writeAll("</span>");
                     }
-                    if (first_number != 0 or second_number != 0) {
-                        try out.print("<span class=\"t{d}_{d}\">", .{ first_number, second_number });
-                        open_span_count += 1;
+                    if (sgr_num == 0) {
+                        if (sgr_color != 0) return error.UnsupportedColor;
+                        continue;
                     }
+                    if (sgr_color != 0) {
+                        try out.print("<span class=\"sgr-{d}_{d}m\">", .{ sgr_color, sgr_num });
+                    } else {
+                        try out.print("<span class=\"sgr-{d}m\">", .{sgr_num});
+                    }
+                    open_span_count += 1;
                 },
-                else => {
-                    std.debug.print("error: unexpected terminal character in escape sequence: {c}\n", .{c});
-                    return error.UnsupportedEscape;
-                },
+                else => return error.UnsupportedEscape,
             },
         }
     }
-    return buf.toOwnedSlice();
+    return try buf.toOwnedSlice();
+}
+
+// Returns true if number is in slice.
+fn in(slice: []const u8, number: u8) bool {
+    for (slice) |n| {
+        if (number == n) return true;
+    }
+    return false;
 }
 
 pub fn exec(
-    allocator: mem.Allocator,
+    allocator: Allocator,
     env_map: *std.process.EnvMap,
     max_size: usize,
     args: []const []const u8,

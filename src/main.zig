@@ -11,7 +11,10 @@ const max_doc_file_size = 10 * 1024 * 1024; // TODO: this should be overridable 
 const CommandLineCommand = enum {
     @"inline",
     syntax,
+    /// build-obj, build-exe, or build-lib
     build,
+    /// zig build system
+    @"build-system",
     run,
     @"test",
     help,
@@ -66,7 +69,8 @@ pub fn main() !void {
             };
             check_help(summary, &params, args);
 
-            const input_file_bytes = try read_input(allocator, args.option("--in_file"));
+            const in_file = args.option("--in_file") orelse @panic("need input file");
+            const input_file_bytes = try read_input(allocator, in_file);
             var buffered_out_stream = try open_output(args.option("--out_file"));
 
             // TODO: make this a bit flexible
@@ -96,12 +100,17 @@ pub fn main() !void {
                 .syntax => try do_syntax(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
                 .run => try do_run(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
                 .build => try do_build(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
+                .@"build-system" => {
+                    try do_build_system(allocator, &iterator, in_file, buffered_out_stream.writer());
+                    try buffered_out_stream.flush();
+                },
                 .@"test" => try do_test(allocator, &iterator, true, code_without_args_comment, buffered_out_stream),
                 .help, .@"--help" => @panic("`help` cannot be used inside the zig-doctest comment"),
             }
         },
         .syntax => try do_syntax(allocator, &args_it, false, {}, {}),
         .build => try do_build(allocator, &args_it, false, {}, {}),
+        .@"build-system" => @panic("nah"),
         .run => try do_run(allocator, &args_it, false, {}, {}),
         .@"test" => try do_test(allocator, &args_it, false, {}, {}),
         .help, .@"--help" => show_main_help(),
@@ -118,6 +127,7 @@ fn do_syntax(
     const summary = "Tests that the syntax is valid, without running the code.";
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("-h, --help             Display this help message") catch unreachable,
+        clap.parseParam("-n, --name <NAME>              Name of the script, defaults to the input filename or `code` when using stdin.") catch unreachable,
         clap.parseParam("-i, --in_file <PATH>   path to the input file, defaults to stdin") catch unreachable,
         clap.parseParam("-o, --out_file <PATH>  path to the output file, defaults to stdout") catch unreachable,
         clap.parseParam("-k, --skip-name        Don't show the file name as a link before the code.") catch unreachable,
@@ -153,6 +163,12 @@ fn do_syntax(
         }
         break :blk try open_output(args.option("--out_file"));
     };
+
+    // Print the filename element
+    const name = args.option("--name") orelse choose_test_name(args.option("--in_file"));
+    if (args.option("--name") != null and !args.flag("--skip-name")) {
+        try buffered_out_stream.writer().print("<p class=\"file\">{s}.zig</p>", .{name});
+    }
 
     try doctest.highlightZigCode(input_file_bytes, allocator, buffered_out_stream.writer());
     try buffered_out_stream.flush();
@@ -282,6 +298,83 @@ fn do_build(
     }
 
     try buffered_out_stream.flush();
+}
+
+fn do_build_system(
+    allocator: mem.Allocator,
+    args_it: anytype,
+    in_file_path: []const u8,
+    out_writer: anytype,
+) !void {
+    const summary = "runs zig build on a build script and prints --summary all";
+    const params = comptime [_]clap.Param(clap.Help){
+        clap.parseParam("-h, --help                     Display this help message") catch unreachable,
+        clap.parseParam("-n, --name <NAME>              Name of the script, defaults to the input filename or `code` when using stdin.") catch unreachable,
+        clap.parseParam("-f, --fail <MATCH>             Expect the build command to encounter a compile error containing some text that is expected to be present in stderr") catch unreachable,
+        clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
+        clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
+        clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
+        clap.parseParam("-k, --keep                     Don't delete the temp folder, useful for debugging the resulting executable.") catch unreachable,
+        clap.parseParam("-k, --skip-name                Don't show the file name as a link before the code.") catch unreachable,
+    };
+
+    var diag: clap.Diagnostic = undefined;
+    var args = clap.parseEx(clap.Help, &params, args_it, .{
+        .allocator = allocator,
+        .diagnostic = &diag,
+    }) catch |err| {
+        // Report any useful error and exit
+        diag.report(std.io.getStdErr().writer(), err) catch {};
+        return err;
+    };
+    check_help(summary, &params, args);
+
+    const input_file_bytes = try read_input(allocator, in_file_path);
+
+    // Choose the right name for this example
+    const name = args.option("--name") orelse "build.zig";
+
+    // Print the filename element
+    if (!args.flag("--skip-name")) {
+        try out_writer.print("<p class=\"file\">{s}</p>", .{name});
+    }
+
+    // Produce the syntax highlighting
+    try doctest.highlightZigCode(input_file_bytes, allocator, out_writer);
+
+    // Grab env map and set max output size
+    var env_map = try process.getEnvMap(allocator);
+    try env_map.put("ZIG_DEBUG_COLOR", "1");
+
+    // Create a temp folder
+    const tmp_dir_name = while (true) {
+        const tmp_dir_name = try randomized_path_name(allocator, "doctest-");
+        fs.cwd().makeDir(tmp_dir_name) catch |err| switch (err) {
+            error.PathAlreadyExists => continue,
+            else => |e| return e,
+        };
+
+        break tmp_dir_name;
+    } else unreachable;
+    defer fs.cwd().deleteTree(tmp_dir_name) catch {
+        @panic("Error while deleting the temp directory!");
+    };
+
+    const zig_exe = args.option("--zig_exe") orelse "zig";
+
+    try @import("doctest/BuildSystemCommand.zig").run(
+        allocator,
+        out_writer,
+        &env_map,
+        zig_exe,
+        .{
+            .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+            .name = name,
+            .tmp_dir_name = tmp_dir_name,
+            .dirname = std.fs.path.dirname(in_file_path) orelse
+                @panic("dirname returned null"),
+        },
+    );
 }
 
 fn do_run(

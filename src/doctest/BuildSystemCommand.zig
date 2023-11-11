@@ -18,6 +18,7 @@ pub fn run(
     out: anytype,
     env_map: *std.process.EnvMap,
     zig_exe: []const u8,
+    args_it: *std.process.ArgIteratorGeneral(.{}),
     cmd: BuildSystemCommand,
 ) !void {
     const zig_cache_path = try fs.path.join(allocator, &.{ cmd.tmp_dir_name, "zig-cache" });
@@ -39,6 +40,11 @@ pub fn run(
     // Invocation line (continues into the following blocks)
     try out.print("<pre><code class=\"shell\">$ zig build", .{});
 
+    while (args_it.next()) |arg| {
+        try build_args.append(arg);
+        try out.print(" {s}", .{arg});
+    }
+
     // Build the script
     const result = try ChildProcess.run(.{
         .allocator = allocator,
@@ -57,9 +63,14 @@ pub fn run(
                         return;
                     },
                     .Success => {
-                        const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);
-                        const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
-                        try out.print("\n{s}</code></pre>\n", .{colored_stderr});
+                        if (result.stdout.len > 0) {
+                            const escaped_stdout = try render_utils.escapeHtml(allocator, result.stdout);
+                            try out.print("\n{s}</code></pre>\n", .{escaped_stdout});
+                        } else {
+                            const escaped_stderr = try render_utils.escapeHtml(allocator, result.stderr);
+                            const colored_stderr = try render_utils.termColor(allocator, escaped_stderr);
+                            try out.print("\n{s}</code></pre>\n", .{colored_stderr});
+                        }
 
                         return;
                     },

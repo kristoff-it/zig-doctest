@@ -79,17 +79,13 @@ pub fn main() !void {
                 @panic("the input file doesn't begin with `// zig-doctest: `");
             }
 
-            const first_newline = for (input_file_bytes, 0..) |c, idx| {
-                if (c == '\n') break idx;
-            } else {
+            const first_newline = mem.indexOfScalar(u8, input_file_bytes, '\n') orelse
                 @panic("the script is empty!");
-            };
+
+            const first_line = input_file_bytes[prefix.len..first_newline];
 
             const InlineArgIterator = std.process.ArgIteratorGeneral(.{});
-            var iterator = try InlineArgIterator.init(
-                std.heap.page_allocator,
-                input_file_bytes[prefix.len..first_newline],
-            );
+            var iterator = try InlineArgIterator.init(std.heap.page_allocator, first_line);
 
             const code_without_args_comment = input_file_bytes[first_newline + 1 ..];
             // Read the real command string from the file
@@ -306,41 +302,56 @@ fn do_build_system(
     in_file_path: []const u8,
     out_writer: anytype,
 ) !void {
-    const summary = "runs zig build on a build script and prints --summary all";
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("-h, --help                     Display this help message") catch unreachable,
-        clap.parseParam("-n, --name <NAME>              Name of the script, defaults to the input filename or `code` when using stdin.") catch unreachable,
-        clap.parseParam("-f, --fail <MATCH>             Expect the build command to encounter a compile error containing some text that is expected to be present in stderr") catch unreachable,
-        clap.parseParam("-i, --in_file <PATH>           Path to the input file, defaults to stdin") catch unreachable,
-        clap.parseParam("-o, --out_file <PATH>          Path to the output file, defaults to stdout") catch unreachable,
-        clap.parseParam("-z, --zig_exe <PATH>           Path to the zig compiler, defaults to `zig` (i.e. assumes zig present in PATH)") catch unreachable,
-        clap.parseParam("-k, --keep                     Don't delete the temp folder, useful for debugging the resulting executable.") catch unreachable,
-        clap.parseParam("-k, --skip-name                Don't show the file name as a link before the code.") catch unreachable,
-    };
+    var opt_name: ?[]const u8 = null;
+    var fail: ?[]const u8 = null;
+    var opt_zig_exe: ?[]const u8 = null;
+    var collapseable = false;
 
-    var diag: clap.Diagnostic = undefined;
-    var args = clap.parseEx(clap.Help, &params, args_it, .{
-        .allocator = allocator,
-        .diagnostic = &diag,
-    }) catch |err| {
-        // Report any useful error and exit
-        diag.report(std.io.getStdErr().writer(), err) catch {};
-        return err;
-    };
-    check_help(summary, &params, args);
+    while (args_it.next()) |arg| {
+        if (mem.eql(u8, arg, "--")) {
+            break;
+        } else if (mem.eql(u8, arg, "--name")) {
+            opt_name = args_it.next();
+        } else if (mem.eql(u8, arg, "--fail")) {
+            fail = args_it.next();
+        } else if (mem.eql(u8, arg, "--zig_exe")) {
+            opt_zig_exe = args_it.next();
+        } else if (mem.eql(u8, arg, "--collapseable")) {
+            collapseable = true;
+        } else {
+            std.debug.panic("bad CLI arg: '{s}'", .{arg});
+        }
+    }
 
-    const input_file_bytes = try read_input(allocator, in_file_path);
+    const all_input_file_bytes = try read_input(allocator, in_file_path);
+    const input_file_bytes = b: {
+        var it = mem.splitScalar(u8, all_input_file_bytes, '\n');
+        _ = it.next().?; // the line that has the flags
+        const rest = it.rest();
+        break :b rest.ptr[0..rest.len :0];
+    };
 
     // Choose the right name for this example
-    const name = args.option("--name") orelse "build.zig";
+    const name = opt_name orelse "build.zig";
 
-    // Print the filename element
-    if (!args.flag("--skip-name")) {
+    if (collapseable) {
+        try out_writer.print(
+            \\<details>
+            \\<summary>
+            \\<span class="file">{s}</span> (click to expand/collapse)
+            \\</summary>
+            \\
+        , .{name});
+    } else {
         try out_writer.print("<p class=\"file\">{s}</p>", .{name});
     }
 
     // Produce the syntax highlighting
     try doctest.highlightZigCode(input_file_bytes, allocator, out_writer);
+
+    if (collapseable) {
+        try out_writer.writeAll("</details>");
+    }
 
     // Grab env map and set max output size
     var env_map = try process.getEnvMap(allocator);
@@ -360,15 +371,16 @@ fn do_build_system(
         @panic("Error while deleting the temp directory!");
     };
 
-    const zig_exe = args.option("--zig_exe") orelse "zig";
+    const zig_exe = opt_zig_exe orelse "zig";
 
     try @import("doctest/BuildSystemCommand.zig").run(
         allocator,
         out_writer,
         &env_map,
         zig_exe,
+        args_it,
         .{
-            .expected_outcome = if (args.option("--fail")) |f| .{ .Failure = f } else .Success,
+            .expected_outcome = if (fail) |f| .{ .Failure = f } else .Success,
             .name = name,
             .tmp_dir_name = tmp_dir_name,
             .dirname = std.fs.path.dirname(in_file_path) orelse

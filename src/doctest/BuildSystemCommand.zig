@@ -34,7 +34,6 @@ pub fn run(
         "--color",     "on",
         "--cache-dir", try fs.path.relative(allocator, cmd.dirname, zig_cache_path),
         "--prefix",    try fs.path.relative(allocator, cmd.dirname, zig_out_path),
-        "--summary",   "all",
     });
 
     // Invocation line (continues into the following blocks)

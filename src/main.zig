@@ -680,7 +680,7 @@ fn randomized_path_name(allocator: mem.Allocator, prefix: []const u8) ![]const u
     var buf: [4]u8 = undefined;
     xoro.random().bytes(&buf);
 
-    var name = try allocator.alloc(u8, prefix.len + 8);
+    const name = try allocator.alloc(u8, prefix.len + 8);
     errdefer allocator.free(name);
 
     return try std.fmt.bufPrint(name, "{s}{}", .{ prefix, std.fmt.fmtSliceHexLower(&buf) });

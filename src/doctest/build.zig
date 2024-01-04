@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const mem = std.mem;
 const print = std.debug.print;
 const fs = std.fs;
@@ -22,7 +23,6 @@ pub const BuildCommand = struct {
     expected_outcome: union(enum) { SilentSuccess, Success, Failure: []const u8 } = .Success,
     max_doc_file_size: usize = 1024 * 1024 * 1, // 1MB TODO: change?
 
-    pub const obj_ext = (std.zig.CrossTarget{}).dynamicLibSuffix();
     pub const Format = enum { exe, obj, lib };
 };
 
@@ -81,11 +81,14 @@ pub fn runBuild(
         },
     }
 
+    const target_query = try std.Target.Query.parse(.{
+        .arch_os_abi = cmd.target_str orelse "native",
+    });
+    const target = try std.zig.system.resolveTargetQuery(target_query);
+
     // Add link options
     for (cmd.link_objects) |link_object| {
-        // TODO: we're setting the obj file extension before parsing
-        //       the provided crosstarget string. Prob not ok.
-        const name_with_ext = try std.fmt.allocPrint(allocator, "{s}{s}", .{ link_object, BuildCommand.obj_ext });
+        const name_with_ext = try std.fmt.allocPrint(allocator, "{s}{s}", .{ link_object, target.dynamicLibSuffix() });
         const full_path_object = try fs.path.join(
             allocator,
             &[_][]const u8{ cmd.tmp_dir_name, name_with_ext },
@@ -99,11 +102,6 @@ pub fn runBuild(
     }
 
     // Add target options
-    // TODO: solve the target mistery and win one less symbol in the lexical scope!
-    const target = try std.zig.CrossTarget.parse(.{
-        .arch_os_abi = cmd.target_str orelse "native",
-    });
-
     // TODO: is_inline is a switch that prevents the target option from being
     // shown in the output. It seems a stylistical thing, do we keep it?
     if (cmd.target_str) |triple| {

@@ -1,6 +1,6 @@
-const Builder = @import("std").build.Builder;
+const std = @import("std");
 
-pub fn build(b: *Builder) void {
+pub fn build(b: *std.Build) void {
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -18,7 +18,9 @@ pub fn build(b: *Builder) void {
         .optimize = optimize,
     });
 
-    exe.addAnonymousModule("clap", .{ .source_file = .{ .path = "zig-clap/clap.zig" } });
+    exe.root_module.addAnonymousImport("clap", .{
+        .root_source_file = .{ .path = "zig-clap/clap.zig" },
+    });
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

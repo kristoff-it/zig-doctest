@@ -639,7 +639,7 @@ fn check_help(comptime summary: []const u8, comptime params: anytype, args: anyt
         std.debug.print("{s}\n\n", .{summary});
         clap.help(io.getStdErr().writer(), params) catch {};
         std.debug.print("\n", .{});
-        std.os.exit(0);
+        std.process.exit(0);
     }
 }
 
@@ -704,5 +704,5 @@ fn show_main_help() noreturn {
         \\
         \\
     });
-    std.os.exit(0);
+    std.process.exit(0);
 }

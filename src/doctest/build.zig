@@ -59,7 +59,7 @@ pub fn runBuild(
             &[_][]const u8{ cmd.tmp_dir_name, name_plus_ext },
         );
 
-        try fs.cwd().writeFile(tmp_source_file_name, input_bytes);
+        try fs.cwd().writeFile(.{ .sub_path = tmp_source_file_name, .data = input_bytes });
 
         try build_args.appendSlice(&[_][]const u8{
             zig_exe,              zig_command,

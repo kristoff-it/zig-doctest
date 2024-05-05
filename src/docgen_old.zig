@@ -306,7 +306,7 @@ fn genHtml(allocator: mem.Allocator, tokenizer: *Tokenizer, toc: *Toc, out: anyt
                     allocator,
                     &[_][]const u8{ tmp_dir_name, name_plus_ext },
                 );
-                try fs.cwd().writeFile(tmp_source_file_name, trimmed_raw_source);
+                try fs.cwd().writeFile(.{ .sub_path = tmp_source_file_name, .data = trimmed_raw_source });
 
                 switch (code.id) {
                     Code.Id.Exe => |expected_outcome| code_block: {

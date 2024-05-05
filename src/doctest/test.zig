@@ -37,7 +37,7 @@ pub fn runTest(
         &[_][]const u8{ cmd.tmp_dir_name, name_plus_ext },
     );
 
-    try fs.cwd().writeFile(tmp_source_file_name, input_bytes);
+    try fs.cwd().writeFile(.{ .sub_path = tmp_source_file_name, .data = input_bytes });
 
     var test_args = std.ArrayList([]const u8).init(allocator);
     defer test_args.deinit();

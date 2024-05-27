@@ -3,7 +3,6 @@ const builtin = @import("builtin");
 const mem = std.mem;
 const print = std.debug.print;
 const fs = std.fs;
-const ChildProcess = std.ChildProcess;
 const process = std.process;
 
 const render_utils = @import("render_utils.zig");
@@ -131,7 +130,7 @@ pub fn runBuild(
     });
 
     // Build the script
-    const result = try ChildProcess.run(.{
+    const result = try process.Child.run(.{
         .allocator = allocator,
         .argv = build_args.items,
         .env_map = env_map,

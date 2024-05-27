@@ -1,7 +1,6 @@
 const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
-const ChildProcess = std.ChildProcess;
 const Allocator = std.mem.Allocator;
 
 pub fn dumpArgs(args: []const []const u8) void {
@@ -212,8 +211,8 @@ pub fn exec(
     env_map: *std.process.EnvMap,
     max_size: usize,
     args: []const []const u8,
-) !ChildProcess.RunResult {
-    const result = try ChildProcess.run(.{
+) !std.process.Child.RunResult {
+    const result = try std.process.Child.run(.{
         .allocator = allocator,
         .argv = args,
         .env_map = env_map,

@@ -2,7 +2,6 @@ const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
 const fs = std.fs;
-const ChildProcess = std.ChildProcess;
 const process = std.process;
 
 const render_utils = @import("render_utils.zig");
@@ -24,7 +23,7 @@ pub fn runExe(
     var exited_with_signal = false;
 
     const result = if (cmd.expected_outcome == .Failure) ko: {
-        const result = try ChildProcess.run(.{
+        const result = try process.Child.run(.{
             .allocator = allocator,
             .argv = run_args,
             .env_map = env_map,

@@ -2,7 +2,6 @@ const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
 const fs = std.fs;
-const ChildProcess = std.ChildProcess;
 const process = std.process;
 const BuildSystemCommand = @This();
 const render_utils = @import("render_utils.zig");
@@ -45,7 +44,7 @@ pub fn run(
     }
 
     // Build the script
-    const result = try ChildProcess.run(.{
+    const result = try process.Child.run(.{
         .allocator = allocator,
         .argv = build_args.items,
         .env_map = env_map,
